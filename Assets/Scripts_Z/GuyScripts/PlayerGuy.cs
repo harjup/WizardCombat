@@ -21,9 +21,9 @@ public class PlayerGuy : ITickable, IInitializable
     {
         _playerGuyHooks = playerGuyHooks;
         _asyncTaskProcessor = asyncTaskProcessor;
-
         _camera = cameraManager.Main;
 
+        _playerGuyHooks.PickupEvent += () => Log.Debug("Got a pickup");
         _timerFactory = new TimerFactory();
     }
 

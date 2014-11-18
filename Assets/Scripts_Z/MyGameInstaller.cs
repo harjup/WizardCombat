@@ -15,8 +15,6 @@ public class MyGameInstaller : MonoInstaller
 
     public override void InstallBindings()
     {
-        Container.Bind<IDependencyRoot>().ToSingle<DependencyRootStandard>();
-
         Container.Bind<IInstaller>().ToSingle<StandardUnityInstaller>();
 
         Container.Bind<ParallelAsyncTaskProcessor>().ToSingle();
@@ -31,6 +29,10 @@ public class MyGameInstaller : MonoInstaller
         //~~~Time to attempt to spawn a player wheee
         Container.Bind<PlayerGuyHooks>().ToTransientFromPrefab<PlayerGuyHooks>(MySettings.PlayerGuy.Prefab).WhenInjectedInto<PlayerGuy>();
 
+        Container.Bind<ZenPickup>().ToSingle();
+        Container.Bind<IInitializable>().ToSingle<ZenPickup>();
+        Container.Bind<PickupHooks>().ToTransientFromPrefab<PickupHooks>(MySettings.Pickup.Prefab).WhenInjectedInto<ZenPickup>();
+
         Container.Bind<IFixedTickable>().ToSingle<CameraFollow>();
 
         Container.Bind<PlayerGuy>().ToSingle();
@@ -44,6 +46,13 @@ public class MySettings
 {
     public Camera MainCamera;
     public PlayerGuySettings PlayerGuy;
+    public PickupSettings Pickup;
+
+    [Serializable]
+    public class PickupSettings
+    {
+        public GameObject Prefab;
+    }
     
     [Serializable]
     public class PlayerGuySettings
@@ -55,15 +64,17 @@ public class MySettings
 public class MyGameRunner : ITickable, IInitializable
 {
     private PlayerGuy _playerGuy;
+    private ZenPickup _zenPickup;
 
-    public MyGameRunner(PlayerGuy playerGuy)
+    public MyGameRunner(PlayerGuy playerGuy, ZenPickup zenPickup)
     {
         _playerGuy = playerGuy;
+        _zenPickup = zenPickup;
     }
 
     public void Initialize()
     {
-        Debug.Log("Hello World");
+        
     }
 
     public void Tick()

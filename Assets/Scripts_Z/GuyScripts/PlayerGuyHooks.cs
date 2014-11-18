@@ -5,7 +5,7 @@ using System.Collections;
 public class PlayerGuyHooks : MonoBehaviour {
 
     public event Action<Collider> TriggerEnter = delegate { };
-
+    public event Action PickupEvent = delegate { };
     public Rigidbody Rigidbody;
 
     public void Start()
@@ -16,5 +16,10 @@ public class PlayerGuyHooks : MonoBehaviour {
     public void OnTriggerEnter(Collider other)
     {
         TriggerEnter(other);
+    }
+
+    public void GetPickup()
+    {
+        PickupEvent();
     }
 }
