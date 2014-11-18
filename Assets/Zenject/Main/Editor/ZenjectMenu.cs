@@ -19,25 +19,76 @@ namespace ModestTree.Zenject
             }
         }
 
+        [MenuItem("Edit/Zenject/Create Global Composition Root")]
+        public static void CreateProjectConfig()
+        {
+            var asset = ScriptableObject.CreateInstance<GlobalInstallerConfig>();
+
+            if (!Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), "Assets/Resources")))
+            {
+                AssetDatabase.CreateFolder("Assets", "Resources");
+            }
+
+            string assetPath = AssetDatabase.GenerateUniqueAssetPath("Assets/Resources/ZenjectGlobalCompositionRoot.asset");
+            AssetDatabase.CreateAsset(asset, assetPath);
+            AssetDatabase.Refresh();
+        }
+
+        // Note that you can also use ZenEditorUtil.ValidateAllActiveScenes if you want the errors back
+        [MenuItem("Edit/Zenject/Validate All Active Scenes")]
+        public static bool ValidateAllActiveScenes()
+        {
+            var startScene = EditorApplication.currentScene;
+
+            var activeScenes = UnityEditor.EditorBuildSettings.scenes
+                .Select(x => new { Name = Path.GetFileNameWithoutExtension(x.path), Path = x.path }).ToList();
+
+            var failedScenes = new List<string>();
+
+            foreach (var sceneInfo in activeScenes)
+            {
+                Log.Info("Validating scene '{0}'...", sceneInfo.Name);
+
+                EditorApplication.OpenScene(sceneInfo.Path);
+
+                var compRoot = GameObject.FindObjectsOfType<CompositionRoot>().OnlyOrDefault();
+
+                // Do not validate if there is no comp root
+                if (compRoot != null)
+                {
+                    if (!ValidateCurrentScene())
+                    {
+                        Log.Error("Failed to validate scene '{0}'", sceneInfo.Name);
+                        failedScenes.Add(sceneInfo.Name);
+                    }
+                }
+            }
+
+            EditorApplication.OpenScene(startScene);
+
+            if (failedScenes.IsEmpty())
+            {
+                Log.Info("Successfully validated all {0} scenes", activeScenes.Count);
+                return true;
+            }
+            else
+            {
+                Log.Error("Validated {0}/{1} scenes. Failed to validate the following: {2}",
+                    activeScenes.Count-failedScenes.Count, activeScenes.Count, failedScenes.Join(", "));
+                return false;
+            }
+        }
+
         [MenuItem("Edit/Zenject/Validate Current Scene #%v")]
         public static bool ValidateCurrentScene()
         {
-            var compRoots = GameObject.FindObjectsOfType<CompositionRoot>();
+            var compRoot = GameObject.FindObjectsOfType<CompositionRoot>().OnlyOrDefault();
 
-            if (compRoots.HasMoreThan(1))
+            if (compRoot == null)
             {
-                Log.Error("Found multiple composition roots when only one was expected while validating current scene");
+                Log.Error("Unable to find unique composition root in current scene");
                 return false;
             }
-
-            if (compRoots.IsEmpty())
-            {
-                // Return true to allow playing in this case
-                Log.Error("Could not find composition root while validating current scene");
-                return true;
-            }
-
-            var compRoot = compRoots.Single();
 
             if (compRoot.Installers.IsEmpty())
             {
@@ -46,12 +97,12 @@ namespace ModestTree.Zenject
                 return true;
             }
 
-            var resolveErrors = ValidateInstallers(compRoot).Take(10).ToList();
-
             // Only show a few to avoid spamming the log too much
+            var resolveErrors = ZenEditorUtil.ValidateInstallers(compRoot).Take(10).ToList();
+
             foreach (var error in resolveErrors)
             {
-                Log.Error(error);
+                Log.ErrorException(error);
             }
 
             if (resolveErrors.Any())
@@ -62,64 +113,6 @@ namespace ModestTree.Zenject
 
             Log.Info("Validation Completed Successfully");
             return true;
-        }
-
-        static IEnumerable<ZenjectResolveException> ValidateInstallers(CompositionRoot compRoot)
-        {
-            var container = new DiContainer();
-            container.Bind<CompositionRoot>().ToSingle(compRoot);
-
-            var allInstallers = new List<IInstaller>();
-
-            foreach (var installer in compRoot.Installers)
-            {
-                if (installer == null)
-                {
-                    yield return new ZenjectResolveException(
-                        "Found null installer in properties of Composition Root");
-                    yield break;
-                }
-
-                if (installer.enabled)
-                {
-                    installer.Container = container;
-                    container.Bind<IInstaller>().To(installer);
-                }
-
-                allInstallers.AddRange(container.InstallInstallers());
-
-                Assert.That(!container.HasBinding<IInstaller>());
-            }
-
-            foreach (var error in container.ValidateResolve<IDependencyRoot>())
-            {
-                yield return error;
-            }
-
-            // Also make sure we can fill in all the dependencies in the built-in scene
-            foreach (var monoBehaviour in compRoot.GetComponentsInChildren<MonoBehaviour>())
-            {
-                if (monoBehaviour == null)
-                {
-                    // Be nice to give more information here
-                    Log.Warn("Found null MonoBehaviour in scene");
-                    continue;
-                }
-
-                foreach (var error in container.ValidateObjectGraph(monoBehaviour.GetType()))
-                {
-                    yield return error;
-                }
-            }
-
-            // Validate dynamically created object graphs
-            foreach (var installer in allInstallers)
-            {
-                foreach (var error in installer.ValidateSubGraphs())
-                {
-                    yield return error;
-                }
-            }
         }
 
         [MenuItem("Edit/Zenject/Output Object Graph For Current Scene")]
@@ -138,7 +131,7 @@ namespace ModestTree.Zenject
             }
             catch (ZenjectException e)
             {
-                Log.Error("Unable to find container in current scene. " + e.ToString());
+                Log.Error("Unable to find container in current scene. " + e.Message);
                 return;
             }
 
@@ -149,3 +142,4 @@ namespace ModestTree.Zenject
         }
     }
 }
+

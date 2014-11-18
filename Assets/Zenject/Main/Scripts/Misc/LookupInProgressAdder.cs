@@ -25,7 +25,8 @@ namespace ModestTree.Zenject
         {
             if (DiContainer.LookupsInProgress.Contains(concreteType))
             {
-                Assert.That(false, () => "Circular dependency detected! \nObject graph:\n" + DiContainer.GetCurrentObjectGraph());
+                throw new ZenjectResolveException(
+                    "Circular dependency detected! \nObject graph:\n" + DiContainer.GetCurrentObjectGraph());
             }
 
             DiContainer.LookupsInProgress.Push(concreteType);

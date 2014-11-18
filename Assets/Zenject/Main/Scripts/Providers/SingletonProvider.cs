@@ -41,7 +41,8 @@ namespace ModestTree.Zenject
 
         public override IEnumerable<ZenjectResolveException> ValidateBinding(Type contractType, InjectContext context)
         {
-            if (_creator.HasInstance())
+            // Can't validate custom methods so assume they work
+            if (_creator.HasInstance() || _creator.HasCustomCreateMethod)
             {
                 // This would be the case if given an instance at binding time with ToSingle(instance)
                 return Enumerable.Empty<ZenjectResolveException>();

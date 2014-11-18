@@ -11,13 +11,24 @@ namespace ModestTree.Zenject
         DiContainer _container;
         Instantiator _instantiator;
         bool _hasInstance;
+        Func<DiContainer, object> _createMethod;
 
         public SingletonLazyCreator(
-            DiContainer container, SingletonProviderMap owner, Type instanceType)
+            DiContainer container, SingletonProviderMap owner,
+            Type instanceType, Func<DiContainer, object> createMethod = null)
         {
             _container = container;
             _owner = owner;
             _instanceType = instanceType;
+            _createMethod = createMethod;
+        }
+
+        public bool HasCustomCreateMethod
+        {
+            get
+            {
+                return _createMethod != null;
+            }
         }
 
         public void IncRefCount()
@@ -64,13 +75,26 @@ namespace ModestTree.Zenject
         {
             if (!_hasInstance)
             {
-                if (_instantiator == null)
+                if (_createMethod != null)
                 {
-                    _instantiator = _container.Resolve<Instantiator>();
+                    _instance = _createMethod(_container);
+                }
+                else
+                {
+                    if (_instantiator == null)
+                    {
+                        _instantiator = _container.Resolve<Instantiator>();
+                    }
+
+                    _instance = _instantiator.Instantiate(GetTypeToInstantiate(contractType));
                 }
 
-                _instance = _instantiator.Instantiate(GetTypeToInstantiate(contractType));
-                Assert.That(_instance != null);
+                if (_instance == null)
+                {
+                    throw new ZenjectException(
+                        "Unable to instantiate type '{0}' in SingletonLazyCreator".With(contractType));
+                }
+
                 _hasInstance = true;
             }
 

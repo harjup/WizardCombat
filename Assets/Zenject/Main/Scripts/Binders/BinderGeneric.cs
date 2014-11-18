@@ -18,9 +18,9 @@ namespace ModestTree.Zenject
         public BindingConditionSetter ToLookup<TConcrete>(object identifier) where TConcrete : TContract
         {
             return ToMethod(c => c.Resolve<TConcrete>(
-                new InjectContext(typeof(TConcrete))
+                new InjectContext(_container, typeof(TConcrete))
                 {
-                Identifier = identifier,
+                    Identifier = identifier,
                 }));
         }
 

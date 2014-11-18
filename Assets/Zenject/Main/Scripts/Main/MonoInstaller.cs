@@ -7,14 +7,14 @@ namespace ModestTree.Zenject
 {
     public abstract class MonoInstaller : MonoBehaviour, IInstaller
     {
-        protected DiContainer _container;
-
         [Inject]
-        public DiContainer Container
+        DiContainer _container;
+
+        protected DiContainer Container
         {
-            set
+            get
             {
-                _container = value;
+                return _container;
             }
         }
 
@@ -24,17 +24,5 @@ namespace ModestTree.Zenject
         }
 
         public abstract void InstallBindings();
-
-        public virtual IEnumerable<ZenjectResolveException> ValidateSubGraphs()
-        {
-            // optional
-            return Enumerable.Empty<ZenjectResolveException>();
-        }
-
-        // Helper method for ValidateSubGraphs
-        protected IEnumerable<ZenjectResolveException> Validate<T>(params Type[] extraTypes)
-        {
-            return _container.ValidateObjectGraph<T>(extraTypes);
-        }
     }
 }

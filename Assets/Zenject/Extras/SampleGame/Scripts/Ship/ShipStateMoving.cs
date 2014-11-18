@@ -13,7 +13,7 @@ namespace ModestTree.Asteroids
         float _oscillationTheta;
 
         public ShipStateMoving(
-            Settings settings, Ship ship, 
+            Settings settings, Ship ship,
             [Inject(Cameras.Main)]
             Camera mainCamera)
             : base(ship)

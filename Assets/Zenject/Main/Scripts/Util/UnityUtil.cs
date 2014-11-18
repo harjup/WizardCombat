@@ -15,9 +15,79 @@ namespace ModestTree.Zenject
             return obj == null || obj.Equals(null);
         }
 
-        public static bool ControlKeyIsDown()
+        public static bool IsMobile
+        {
+            get
+            {
+#if UNITY_IPHONE || UNITY_ANDROID || UNITY_BLACKBERRY || UNITY_WP8
+                return true;
+#else
+                return false;
+#endif
+            }
+        }
+
+        public static bool IsStandalone
+        {
+            get
+            {
+#if UNITY_STANDALONE
+                return true;
+#else
+                return false;
+#endif
+            }
+        }
+
+        public static bool IsAndroid
+        {
+            get
+            {
+#if UNITY_ANDROID
+                return true;
+#else
+                return false;
+#endif
+            }
+        }
+
+        public static bool IsEditor
+        {
+            get
+            {
+#if UNITY_EDITOR
+                return true;
+#else
+                return false;
+#endif
+            }
+        }
+
+        public static bool IsWebPlayer
+        {
+            get
+            {
+#if UNITY_WEBPLAYER
+                return true;
+#else
+                return false;
+#endif
+            }
+        }
+
+        public static bool IsAltKeyIsDown()
+        {
+            return Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
+        }
+
+        public static bool IsControlKeyIsDown()
         {
             return Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+        }
+
+        public static bool IsShiftKeyIsDown()
+        {
+            return Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
         }
     }
 }

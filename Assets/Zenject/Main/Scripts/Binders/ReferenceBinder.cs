@@ -72,7 +72,8 @@ namespace ModestTree.Zenject
             return ToProvider(_singletonMap.CreateProvider(concreteType));
         }
 
-        public BindingConditionSetter To<TConcrete>(TConcrete instance) where TConcrete : TContract
+        public BindingConditionSetter To<TConcrete>(TConcrete instance)
+            where TConcrete : TContract
         {
             if (UnityUtil.IsNull(instance) && !_container.AllowNullBindings)
             {
@@ -94,7 +95,8 @@ namespace ModestTree.Zenject
             return ToProvider(new InstanceProvider(typeof(TConcrete), instance));
         }
 
-        public BindingConditionSetter ToSingle<TConcrete>(TConcrete instance) where TConcrete : TContract
+        public BindingConditionSetter ToSingle<TConcrete>(TConcrete instance)
+            where TConcrete : TContract
         {
             if (UnityUtil.IsNull(instance) && !_container.AllowNullBindings)
             {
@@ -122,8 +124,7 @@ namespace ModestTree.Zenject
         // Note: Here we assume that the contract is a component on the given prefab
         public BindingConditionSetter ToSingleFromPrefab<TConcrete>(GameObject prefab) where TConcrete : Component, TContract
         {
-            // We have to cast to object otherwise we get SecurityExceptions when this function is run outside of unity
-            if (UnityUtil.IsNull(prefab) && !_container.AllowNullBindings)
+            if (UnityUtil.IsNull(prefab))
             {
                 throw new ZenjectBindException("Received null prefab while binding type '{0}'".With(typeof(TConcrete).Name()));
             }
@@ -135,7 +136,7 @@ namespace ModestTree.Zenject
         public BindingConditionSetter ToTransientFromPrefab<TConcrete>(GameObject prefab) where TConcrete : Component, TContract
         {
             // We have to cast to object otherwise we get SecurityExceptions when this function is run outside of unity
-            if (UnityUtil.IsNull(prefab) && !_container.AllowNullBindings)
+            if (UnityUtil.IsNull(prefab))
             {
                 throw new ZenjectBindException("Received null prefab while binding type '{0}'".With(typeof(TConcrete).Name()));
             }
@@ -163,6 +164,18 @@ namespace ModestTree.Zenject
         public BindingConditionSetter ToSingleGameObject<TConcrete>(string name) where TConcrete : MonoBehaviour, TContract
         {
             return ToProvider(new GameObjectSingletonProvider(typeof(TConcrete), _container, name));
+        }
+
+        public BindingConditionSetter ToSingleMonoBehaviour<TConcrete>(GameObject gameObject)
+            where TConcrete : TContract
+        {
+            return ToProvider(new MonoBehaviourSingletonProvider(typeof(TConcrete), _container, gameObject));
+        }
+
+        public BindingConditionSetter ToSingleMethod<TConcrete>(Func<DiContainer, TConcrete> method)
+            where TConcrete : TContract
+        {
+            return ToProvider(_singletonMap.CreateProvider(method));
         }
     }
 }

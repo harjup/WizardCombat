@@ -6,12 +6,12 @@ public class TestInstaller : MonoInstaller
 {
     public override void InstallBindings()
     {
-        _container.Bind<IDependencyRoot>().ToSingle<DependencyRootStandard>();
+        Container.Bind<IDependencyRoot>().ToSingle<DependencyRootStandard>();
 
-        _container.Bind<IInstaller>().ToSingle<StandardUnityInstaller>();
+        Container.Bind<IInstaller>().ToSingle<StandardUnityInstaller>();
 
-        _container.Bind<ITickable>().ToSingle<TestRunner>();
-        _container.Bind<IInitializable>().ToSingle<TestRunner>();
+        Container.Bind<ITickable>().ToSingle<TestRunner>();
+        Container.Bind<IInitializable>().ToSingle<TestRunner>();
     }
 }
 

@@ -26,6 +26,11 @@ namespace ModestTree.Zenject
             _singletonMap = singletonMap;
         }
 
+        public BinderUntyped Bind(Type contractType)
+        {
+            return new CustomScopeUntypedBinder(this, contractType, _container, _singletonMap);
+        }
+
         public ReferenceBinder<TContract> Bind<TContract>() where TContract : class
         {
             return new CustomScopeReferenceBinder<TContract>(this, _container, _singletonMap);
@@ -34,6 +39,18 @@ namespace ModestTree.Zenject
         public ValueBinder<TContract> BindValue<TContract>() where TContract : struct
         {
             return new CustomScopeValueBinder<TContract>(this, _container);
+        }
+
+        // This method is just an alternative way of binding to a dependency of
+        // a specific class with a specific identifier
+        public void BindIdentifier<TClass, TParam>(object identifier, TParam value)
+            where TParam : class
+        {
+            Bind(typeof(TParam)).To(value).WhenInjectedInto<TClass>().As(identifier);
+
+            // We'd pref to do this instead but it fails on web player because Mono
+            // seems to interpret TDerived : TBase to require that TDerived != TBase?
+            //Bind<TParam>().To(value).WhenInjectedInto<TClass>().As(identifier);
         }
 
         void AddProvider(ProviderBase provider)
@@ -77,6 +94,25 @@ namespace ModestTree.Zenject
                 BindScope owner,
                 DiContainer container, SingletonProviderMap singletonMap)
                 : base(container, singletonMap)
+            {
+                _owner = owner;
+            }
+
+            public override BindingConditionSetter ToProvider(ProviderBase provider)
+            {
+                _owner.AddProvider(provider);
+                return base.ToProvider(provider);
+            }
+        }
+
+        class CustomScopeUntypedBinder : BinderUntyped
+        {
+            BindScope _owner;
+
+            public CustomScopeUntypedBinder(
+                BindScope owner, Type contractType,
+                DiContainer container, SingletonProviderMap singletonMap)
+                : base(container, contractType, singletonMap)
             {
                 _owner = owner;
             }

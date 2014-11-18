@@ -35,7 +35,7 @@ namespace ModestTree.Zenject
                     new DisposableInfo(disposable, success ? (int?)priority : null));
             }
 
-            Log.DebugFormat("Loaded {0} IDisposables to DisposablesHandler", _disposables.Count());
+            Log.Debug("Loaded {0} IDisposables to DisposablesHandler", _disposables.Count());
         }
 
         public void Dispose()
@@ -68,7 +68,7 @@ namespace ModestTree.Zenject
                 }
             }
 
-            Log.DebugFormat("Disposed of {0} disposables in DisposablesHandler", _disposables.Count());
+            Log.Debug("Disposed of {0} disposables in DisposablesHandler", _disposables.Count());
         }
 
         void WarnForMissingBindings()

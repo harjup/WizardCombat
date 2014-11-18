@@ -28,6 +28,18 @@ namespace ModestTree
             }
         }
 
+        // Return the first item when the list is of length one and otherwise returns default
+        public static TSource OnlyOrDefault<TSource>(this IEnumerable<TSource> source)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException("source");
+            }
+
+            var results = source.Take(2).ToArray();
+            return results.Length == 1 ? results[0] : default(TSource);
+        }
+
         public static IEnumerable<T> Prepend<T>(this IEnumerable<T> first, IEnumerable<T> second)
         {
             foreach (T t in second)

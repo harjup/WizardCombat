@@ -210,5 +210,10 @@ namespace ModestTree.Zenject
 
             return ToProvider(new GameObjectSingletonProvider(typeof(TConcrete), _container, name));
         }
+
+        public BindingConditionSetter ToSingleMethod<TConcrete>(Func<DiContainer, TConcrete> method)
+        {
+            return ToProvider(_singletonMap.CreateProvider(method));
+        }
     }
 }

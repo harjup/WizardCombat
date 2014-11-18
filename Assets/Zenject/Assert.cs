@@ -131,6 +131,15 @@ namespace ModestTree
         }
 
         [Conditional("UNITY_EDITOR")]
+        public static void IsNull(object val, string message, params object[] parameters)
+        {
+            if (val != null)
+            {
+                TriggerAssert("Assert Hit! Expected null pointer but instead found '" + val.ToString() + "': " + FormatString(message, parameters));
+            }
+        }
+
+        [Conditional("UNITY_EDITOR")]
         public static void IsNotNull(object val, string message, params object[] parameters)
         {
             if (val == null)

@@ -19,7 +19,7 @@ namespace ModestTree.Zenject
         public static void LoadScene(
             string levelName, Action<DiContainer> extraBindings)
         {
-            CompositionRoot.ExtraBindingsLookup = extraBindings;
+            CompositionRoot.ExtraBindingsLookup += extraBindings;
             Application.LoadLevel(levelName);
         }
 
@@ -31,7 +31,7 @@ namespace ModestTree.Zenject
         public static void LoadSceneAdditive(
             string levelName, Action<DiContainer> extraBindings)
         {
-            CompositionRoot.ExtraBindingsLookup = extraBindings;
+            CompositionRoot.ExtraBindingsLookup += extraBindings;
             Application.LoadLevelAdditive(levelName);
         }
 

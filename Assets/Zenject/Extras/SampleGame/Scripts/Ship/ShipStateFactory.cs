@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using System.Collections;
 using ModestTree.Zenject;
@@ -7,11 +8,11 @@ namespace ModestTree.Asteroids
 {
     public class ShipStateFactory
     {
-        Instantiator _instantiator;
+        DiContainer _container;
 
-        public ShipStateFactory(Instantiator instantiator)
+        public ShipStateFactory(DiContainer container)
         {
-            _instantiator = instantiator;
+            _container = container;
         }
 
         public ShipState Create(ShipStates state, params object[] constructorArgs)
@@ -19,13 +20,13 @@ namespace ModestTree.Asteroids
             switch (state)
             {
                 case ShipStates.Dead:
-                    return _instantiator.Instantiate<ShipStateDead>(constructorArgs);
+                    return _container.Instantiate<ShipStateDead>(constructorArgs);
 
                 case ShipStates.Moving:
-                    return _instantiator.Instantiate<ShipStateMoving>(constructorArgs);
+                    return _container.Instantiate<ShipStateMoving>(constructorArgs);
 
                 case ShipStates.WaitingToStart:
-                    return _instantiator.Instantiate<ShipStateWaitingToStart>(constructorArgs);
+                    return _container.Instantiate<ShipStateWaitingToStart>(constructorArgs);
             }
 
             Assert.That(false);

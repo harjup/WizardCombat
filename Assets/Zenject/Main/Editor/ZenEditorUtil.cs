@@ -11,21 +11,88 @@ namespace ModestTree.Zenject
     {
         public static DiContainer GetContainerForCurrentScene()
         {
-            var roots = GameObject.FindObjectsOfType<CompositionRoot>();
+            var compRoot = GameObject.FindObjectsOfType<CompositionRoot>().OnlyOrDefault();
 
-            if (roots.IsEmpty())
+            if (compRoot == null)
             {
                 throw new ZenjectException(
                     "Unable to find CompositionRoot in current scene.");
             }
 
-            if (roots.Length > 1)
+            return compRoot.Container;
+        }
+
+        public static IEnumerable<ZenjectResolveException> ValidateAllActiveScenes()
+        {
+            var activeScenes = UnityEditor.EditorBuildSettings.scenes
+                .Select(x => new { Name = Path.GetFileNameWithoutExtension(x.path), Path = x.path }).ToList();
+
+            foreach (var sceneInfo in activeScenes)
             {
-                throw new ZenjectException(
-                    "Found multiple CompositionRoot objects.  Not sure which one to use");
+                EditorApplication.OpenScene(sceneInfo.Path);
+
+                foreach (var error in ValidateCurrentScene())
+                {
+                    yield return error;
+                }
+            }
+        }
+
+        public static IEnumerable<ZenjectResolveException> ValidateCurrentScene()
+        {
+            var compRoot = GameObject.FindObjectsOfType<CompositionRoot>().OnlyOrDefault();
+
+            if (compRoot == null || compRoot.Installers.IsEmpty())
+            {
+                return Enumerable.Empty<ZenjectResolveException>();
             }
 
-            return roots[0].Container;
+            return ZenEditorUtil.ValidateInstallers(compRoot);
+        }
+
+        public static IEnumerable<ZenjectResolveException> ValidateInstallers(CompositionRoot compRoot)
+        {
+            var globalContainer = GlobalCompositionRoot.CreateContainer(true, null);
+            var container = compRoot.CreateContainer(true, globalContainer);
+
+            foreach (var error in container.ValidateResolve<IDependencyRoot>())
+            {
+                yield return error;
+            }
+
+            // Also make sure we can fill in all the dependencies in the built-in scene
+            foreach (var curTransform in compRoot.GetComponentsInChildren<Transform>())
+            {
+                foreach (var monoBehaviour in curTransform.GetComponents<MonoBehaviour>())
+                {
+                    if (monoBehaviour == null)
+                    {
+                        Log.Warn("Found null MonoBehaviour on " + curTransform.name);
+                        continue;
+                    }
+
+                    foreach (var error in container.ValidateObjectGraph(monoBehaviour.GetType()))
+                    {
+                        yield return error;
+                    }
+                }
+            }
+
+            foreach (var installer in globalContainer.InstalledInstallers.Concat(container.InstalledInstallers))
+            {
+                if (installer is IValidatable)
+                {
+                    foreach (var error in ((IValidatable)installer).Validate())
+                    {
+                        yield return error;
+                    }
+                }
+            }
+
+            foreach (var error in container.ValidateValidatables())
+            {
+                yield return error;
+            }
         }
 
         public static void OutputObjectGraphForCurrentScene(

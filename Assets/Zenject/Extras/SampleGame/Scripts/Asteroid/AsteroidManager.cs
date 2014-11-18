@@ -9,19 +9,19 @@ using System.Linq;
 
 namespace ModestTree.Asteroids
 {
-    public class AsteroidManager : ITickable
+    public class AsteroidManager : ITickable, IFixedTickable
     {
         Settings _settings;
         float _timeToNextSpawn;
         float _timeIntervalBetweenSpawns;
-        IFactory<IAsteroid> _asteroidFactory;
+        Asteroid.Factory _asteroidFactory;
         LevelHelper _level;
         bool _started;
-        List<IAsteroid> _asteroids = new List<IAsteroid>();
+        List<Asteroid> _asteroids = new List<Asteroid>();
         Queue<AsteroidAttributes> _cachedAttributes = new Queue<AsteroidAttributes>();
 
         public AsteroidManager(
-            Settings settings, IFactory<IAsteroid> asteroidFactory, LevelHelper level)
+            Settings settings, Asteroid.Factory asteroidFactory, LevelHelper level)
         {
             _settings = settings;
             _timeIntervalBetweenSpawns = _settings.maxSpawnTime / (_settings.maxSpawns - _settings.startingSpawns);
@@ -106,11 +106,19 @@ namespace ModestTree.Asteroids
             _started = false;
         }
 
+        public void FixedTick()
+        {
+            foreach (var asteroid in _asteroids)
+            {
+                asteroid.FixedTick();
+            }
+        }
+
         public void Tick()
         {
             foreach (var asteroid in _asteroids)
             {
-                asteroid.Update();
+                asteroid.Tick();
             }
 
             if (_started)

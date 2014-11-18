@@ -6,36 +6,7 @@ using ModestTree.Zenject;
 
 namespace ModestTree.Asteroids
 {
-    public interface IAsteroid : IDisposable
-    {
-        void Update();
-
-        Vector3 Velocity
-        {
-            get;
-            set;
-        }
-
-        float Scale
-        {
-            get;
-            set;
-        }
-
-        float Mass
-        {
-            get;
-            set;
-        }
-
-        Vector3 Position
-        {
-            get;
-            set;
-        }
-    }
-
-    public class Asteroid : MonoBehaviour, IAsteroid
+    public class Asteroid : MonoBehaviour
     {
         [Inject]
         LevelHelper _level;
@@ -98,9 +69,20 @@ namespace ModestTree.Asteroids
             }
         }
 
-        public void Update()
+        public void FixedTick()
         {
-            LimitSpeed();
+            // Limit speed to a maximum
+            var speed = rigidbody.velocity.magnitude;
+
+            if (speed > _settings.maxSpeed)
+            {
+                var dir = rigidbody.velocity / speed;
+                rigidbody.velocity = dir * _settings.maxSpeed;
+            }
+        }
+
+        public void Tick()
+        {
             CheckForTeleport();
         }
 
@@ -109,17 +91,6 @@ namespace ModestTree.Asteroids
             Assert.That(!_hasDisposed);
             _hasDisposed = true;
             GameObject.Destroy(gameObject);
-        }
-
-        void LimitSpeed()
-        {
-            var speed = rigidbody.velocity.magnitude;
-
-            if (speed > _settings.maxSpeed)
-            {
-                var dir = rigidbody.velocity / speed;
-                rigidbody.velocity = dir * _settings.maxSpeed;
-            }
         }
 
         void CheckForTeleport()
@@ -153,6 +124,10 @@ namespace ModestTree.Asteroids
         {
             public float massScaleFactor;
             public float maxSpeed;
+        }
+
+        public class Factory : GameObjectFactory<Asteroid>
+        {
         }
     }
 }

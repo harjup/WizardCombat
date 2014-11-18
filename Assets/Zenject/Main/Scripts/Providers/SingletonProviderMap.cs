@@ -20,6 +20,24 @@ namespace ModestTree.Zenject
             Assert.That(success);
         }
 
+        SingletonLazyCreator AddCreator<TConcrete>(Func<DiContainer, TConcrete> method)
+        {
+            SingletonLazyCreator creator;
+
+            if (_creators.ContainsKey(typeof(TConcrete)))
+            {
+                throw new ZenjectBindException(
+                    "Found multiple singleton instances bound to type '{0}'".With(typeof(TConcrete)));
+            }
+
+            creator = new SingletonLazyCreator(
+                _container, this, typeof(TConcrete), (container) => method(container));
+            _creators.Add(typeof(TConcrete), creator);
+
+            creator.IncRefCount();
+            return creator;
+        }
+
         SingletonLazyCreator AddCreator(Type concreteType)
         {
             SingletonLazyCreator creator;
@@ -42,6 +60,11 @@ namespace ModestTree.Zenject
         public ProviderBase CreateProvider(Type concreteType)
         {
             return new SingletonProvider(_container, AddCreator(concreteType));
+        }
+
+        public ProviderBase CreateProvider<TConcrete>(Func<DiContainer, TConcrete> method)
+        {
+            return new SingletonProvider(_container, AddCreator(method));
         }
 
         public ProviderBase CreateProvider<TConcrete>(TConcrete instance)

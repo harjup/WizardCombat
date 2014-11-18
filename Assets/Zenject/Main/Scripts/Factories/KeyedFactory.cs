@@ -5,17 +5,42 @@ using System.Linq;
 
 namespace ModestTree.Zenject
 {
-    public class KeyedFactory<TBase, TKey>
+    public abstract class KeyedFactoryBase<TBase, TKey> : IValidatable
     {
-        readonly Instantiator _instantiator;
-        readonly Dictionary<TKey, Type> _typeMap;
+        [Inject]
+        readonly DiContainer _container;
 
-        public KeyedFactory(
-            List<Tuple<TKey, Type>> typePairs,
-            Instantiator instantiator)
+        [Inject]
+        [InjectOptional]
+        readonly List<Tuple<TKey, Type>> _typePairs;
+
+        Dictionary<TKey, Type> _typeMap;
+
+        [Inject]
+        [InjectOptional]
+        readonly Type _fallbackType;
+
+        protected DiContainer Container
         {
-            _typeMap = typePairs.ToDictionary(x => x.First, x => x.Second);
-            _instantiator = instantiator;
+            get
+            {
+                return _container;
+            }
+        }
+
+        protected abstract Type[] ProvidedTypes
+        {
+            get;
+        }
+
+        [PostInject]
+        public void Initialize()
+        {
+            Assert.That(_fallbackType == null || _fallbackType.DerivesFromOrEqual<TBase>(),
+                "Expected fallback type '{0}' to derive from '{1}'", _fallbackType, typeof(TBase));
+
+            _typeMap = _typePairs.ToDictionary(x => x.First, x => x.Second);
+            _typePairs.Clear();
         }
 
         public Type GetMapping(TKey key)
@@ -23,18 +48,146 @@ namespace ModestTree.Zenject
             return _typeMap[key];
         }
 
-        public TBase Create(TKey key, params object[] args)
+        protected Type GetTypeForKey(TKey key)
         {
-            Assert.That(_typeMap.ContainsKey(key),
-                "Could not find instance for key '{0}'", key);
+            Type keyedType;
 
-            return (TBase)_instantiator.Instantiate(_typeMap[key], args);
+            if (!_typeMap.TryGetValue(key, out keyedType))
+            {
+                Assert.IsNotNull(_fallbackType, "Could not find instance for key '{0}'", key);
+                return _fallbackType;
+            }
+
+            return keyedType;
         }
 
-        public static void AddBinding<TDerived>(DiContainer container, TKey key)
+        public IEnumerable<ZenjectResolveException> Validate()
+        {
+            foreach (var constructType in _typeMap.Values)
+            {
+                foreach (var error in _container.ValidateObjectGraph(constructType, ProvidedTypes))
+                {
+                    yield return error;
+                }
+            }
+        }
+
+        protected static BindingConditionSetter AddBindingInternal<TDerived>(DiContainer container, TKey key)
             where TDerived : TBase
         {
-            container.Bind<Tuple<TKey, Type>>().To(Tuple.New(key, typeof(TDerived))).WhenInjectedInto<KeyedFactory<TBase, TKey>>();
+            return container.Bind<Tuple<TKey, Type>>().To(Tuple.New(key, typeof(TDerived)));
+        }
+    }
+
+    // Zero parameters
+    public class KeyedFactory<TBase, TKey> : KeyedFactoryBase<TBase, TKey>
+    {
+        protected override Type[] ProvidedTypes
+        {
+            get
+            {
+                return new Type[0];
+            }
+        }
+
+        public TBase Create(TKey key)
+        {
+            var type = GetTypeForKey(key);
+            return (TBase)Container.Instantiate(type);
+        }
+    }
+
+    // One parameter
+    public class KeyedFactory<TBase, TKey, TParam1> : KeyedFactoryBase<TBase, TKey>
+    {
+        protected override Type[] ProvidedTypes
+        {
+            get
+            {
+                return new Type[] { typeof(TParam1) };
+            }
+        }
+
+        public TBase Create(TKey key, TParam1 param1)
+        {
+            return (TBase)Container.InstantiateExplicit(
+                GetTypeForKey(key),
+                new List<TypeValuePair>()
+                {
+                    InstantiateUtil.CreateTypePair(param1),
+                });
+        }
+    }
+
+    // Two parameters
+    public class KeyedFactory<TBase, TKey, TParam1, TParam2> : KeyedFactoryBase<TBase, TKey>
+    {
+        protected override Type[] ProvidedTypes
+        {
+            get
+            {
+                return new Type[] { typeof(TParam1), typeof(TParam2) };
+            }
+        }
+
+        public TBase Create(TKey key, TParam1 param1, TParam2 param2)
+        {
+            return (TBase)Container.InstantiateExplicit(
+                GetTypeForKey(key),
+                new List<TypeValuePair>()
+                {
+                    InstantiateUtil.CreateTypePair(param1),
+                    InstantiateUtil.CreateTypePair(param2),
+                });
+        }
+    }
+
+    // Three parameters
+    public class KeyedFactory<TBase, TKey, TParam1, TParam2, TParam3> : KeyedFactoryBase<TBase, TKey>
+    {
+        protected override Type[] ProvidedTypes
+        {
+            get
+            {
+                return new Type[] { typeof(TParam1), typeof(TParam2), typeof(TParam3) };
+            }
+        }
+
+        public TBase Create(TKey key, TParam1 param1, TParam2 param2, TParam3 param3)
+        {
+            return (TBase)Container.InstantiateExplicit(
+                GetTypeForKey(key),
+                new List<TypeValuePair>()
+                {
+                    InstantiateUtil.CreateTypePair(param1),
+                    InstantiateUtil.CreateTypePair(param2),
+                    InstantiateUtil.CreateTypePair(param3),
+                });
+        }
+    }
+
+    // Four parameters
+    public class KeyedFactory<TBase, TKey, TParam1, TParam2, TParam3, TParam4> : KeyedFactoryBase<TBase, TKey>
+    {
+        protected override Type[] ProvidedTypes
+        {
+            get
+            {
+                return new Type[] { typeof(TParam1), typeof(TParam2), typeof(TParam3), typeof(TParam4) };
+            }
+        }
+
+        public TBase Create(TKey key, TParam1 param1, TParam2 param2, TParam3 param3, TParam4 param4)
+        {
+            return (TBase)Container.InstantiateExplicit(
+                GetTypeForKey(key),
+                new List<TypeValuePair>()
+                {
+                    InstantiateUtil.CreateTypePair(param1),
+                    InstantiateUtil.CreateTypePair(param2),
+                    InstantiateUtil.CreateTypePair(param3),
+                    InstantiateUtil.CreateTypePair(param4),
+                });
         }
     }
 }

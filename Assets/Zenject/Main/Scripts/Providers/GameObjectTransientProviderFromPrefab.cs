@@ -7,13 +7,22 @@ namespace ModestTree.Zenject
 {
     public class GameObjectTransientProviderFromPrefab<T> : ProviderBase where T : Component
     {
-        IFactory<T> _factory;
         DiContainer _container;
+        GameObject _template;
+        GameObjectInstantiator _instantiator;
 
         public GameObjectTransientProviderFromPrefab(DiContainer container, GameObject template)
         {
-            _factory = new GameObjectFactory<T>(container, template);
             _container = container;
+            _template = template;
+        }
+
+        GameObjectInstantiator Instantiator
+        {
+            get
+            {
+                return _instantiator ?? (_instantiator = _container.Resolve<GameObjectInstantiator>());
+            }
         }
 
         public override Type GetInstanceType()
@@ -30,7 +39,7 @@ namespace ModestTree.Zenject
         public override object GetInstance(Type contractType, InjectContext context)
         {
             Assert.That(typeof(T).DerivesFromOrEqual(contractType));
-            return _factory.Create();
+            return Instantiator.Instantiate<T>(_template);
         }
 
         public override IEnumerable<ZenjectResolveException> ValidateBinding(Type contractType, InjectContext context)

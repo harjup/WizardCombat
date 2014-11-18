@@ -10,7 +10,7 @@ namespace ModestTree.Zenject
             DiContainer container, Type contractType)
         {
             return ValidateContract(
-                container, contractType, new InjectContext());
+                container, contractType, new InjectContext(container));
         }
 
         public static IEnumerable<ZenjectResolveException> ValidateContract(
@@ -121,7 +121,7 @@ namespace ModestTree.Zenject
                     }
 
                     var context = new InjectContext(
-                        dependInfo, DiContainer.LookupsInProgress.ToList(), null);
+                        container, dependInfo, DiContainer.LookupsInProgress.ToList(), null);
 
                     foreach (var error in ValidateContract(
                         container, dependInfo.ContractType, context))

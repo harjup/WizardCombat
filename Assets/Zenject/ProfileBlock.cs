@@ -1,10 +1,10 @@
+#define PROFILING_ENABLED
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using UnityEngine;
-
-//#define PROFILING_ENABLED
 
 namespace ModestTree
 {
@@ -21,6 +21,16 @@ namespace ModestTree
             return new ProfileBlock(sampleName);
         }
 
+        public static ProfileBlock Start(string sampleNameFormat, object obj)
+        {
+            return new ProfileBlock(string.Format(sampleNameFormat, obj));
+        }
+
+        public static ProfileBlock Start(string sampleNameFormat, object obj1, object obj2)
+        {
+            return new ProfileBlock(string.Format(sampleNameFormat, obj1, obj2));
+        }
+
         public void Dispose()
         {
             Assert.That(Application.isEditor);
@@ -33,6 +43,16 @@ namespace ModestTree
         }
 
         public static ProfileBlock Start(string sampleName)
+        {
+            return null;
+        }
+
+        public static ProfileBlock Start(string sampleNameFormat, object obj)
+        {
+            return null;
+        }
+
+        public static ProfileBlock Start(string sampleNameFormat, object obj1, object obj2)
         {
             return null;
         }

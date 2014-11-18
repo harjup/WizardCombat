@@ -26,8 +26,7 @@ namespace ModestTree.Zenject
             var ignoreTypes = new List<Type>()
             {
                 typeof(DiContainer),
-                typeof(InitializableHandler),
-                typeof(StandardKernel),
+                typeof(InitializableManager),
             };
 
             ignoreTypes.AddRange(externalIgnoreTypes);
@@ -62,11 +61,6 @@ namespace ModestTree.Zenject
 
         static bool ShouldIgnoreType(Type type, List<Type> ignoreTypes)
         {
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Factory<>))
-            {
-                return true;
-            }
-
             return ignoreTypes.Contains(type);
         }
 

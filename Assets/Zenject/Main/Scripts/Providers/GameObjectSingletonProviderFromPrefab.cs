@@ -7,14 +7,14 @@ namespace ModestTree.Zenject
 {
     public class GameObjectSingletonProviderFromPrefab<T> : ProviderBase where T : Component
     {
-        IFactory<T> _factory;
-        object _instance;
+        T _instance;
         DiContainer _container;
+        GameObject _template;
 
         public GameObjectSingletonProviderFromPrefab(DiContainer container, GameObject template)
         {
-            _factory = new GameObjectFactory<T>(container, template);
             _container = container;
+            _template = template;
         }
 
         public override Type GetInstanceType()
@@ -34,7 +34,7 @@ namespace ModestTree.Zenject
 
             if (_instance == null)
             {
-                _instance = _factory.Create();
+                _instance = _container.Resolve<GameObjectInstantiator>().Instantiate<T>(_template);
                 Assert.That(_instance != null);
             }
 

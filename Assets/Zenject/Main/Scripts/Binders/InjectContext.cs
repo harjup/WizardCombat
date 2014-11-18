@@ -15,21 +15,26 @@ namespace ModestTree.Zenject
         public object Identifier;
         public List<Type> ParentTypes;
         public bool Optional;
+        public DiContainer Container;
 
-        public InjectContext()
+        public InjectContext(DiContainer container)
         {
+            Container = container;
             ParentTypes = new List<Type>();
         }
 
-        public InjectContext(Type targetType)
+        public InjectContext(DiContainer container, Type targetType)
         {
+            Container = container;
             ParentTypes = new List<Type>();
             EnclosingType = targetType;
         }
 
         internal InjectContext(
+            DiContainer container,
             InjectableInfo injectInfo, List<Type> parents, object targetInstance)
         {
+            Container = container;
             Optional = injectInfo.Optional;
             Identifier = injectInfo.Identifier;
             SourceName = injectInfo.SourceName;

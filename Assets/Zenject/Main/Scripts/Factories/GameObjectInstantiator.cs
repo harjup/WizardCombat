@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace ModestTree.Zenject
@@ -8,39 +9,30 @@ namespace ModestTree.Zenject
     // any dependencies they have
     public class GameObjectInstantiator
     {
-        public event Action<GameObject> GameObjectInstantiated = delegate { };
-
         readonly DiContainer _container;
-        readonly CompositionRoot _compRoot;
+        readonly Transform _rootTransform;
 
-        public GameObjectInstantiator(DiContainer container)
+        public GameObjectInstantiator(
+            DiContainer container, Transform rootTransform)
         {
             _container = container;
-            _compRoot = container.Resolve<CompositionRoot>();
-        }
-
-        public Transform RootParent
-        {
-            get
-            {
-                return _compRoot.transform;
-            }
+            _rootTransform = rootTransform;
         }
 
         // Add a monobehaviour to an existing game object
         // Note: gameobject here is not a prefab prototype, it is an instance
-        public TContract AddMonobehaviour<TContract>(GameObject gameObject, params object[] args) where TContract : MonoBehaviour
+        public TContract AddMonobehaviour<TContract>(GameObject gameObject, params object[] args) where TContract : Component
         {
             return (TContract)AddMonobehaviour(typeof(TContract), gameObject, args);
         }
 
         // Add a monobehaviour to an existing game object, using Type rather than a generic
         // Note: gameobject here is not a prefab prototype, it is an instance
-        public MonoBehaviour AddMonobehaviour(
+        public Component AddMonobehaviour(
             Type behaviourType, GameObject gameObject, params object[] args)
         {
-            Assert.That(behaviourType.DerivesFrom<MonoBehaviour>());
-            var monoBehaviour = (MonoBehaviour)gameObject.AddComponent(behaviourType);
+            Assert.That(behaviourType.DerivesFrom<Component>());
+            var monoBehaviour = (Component)gameObject.AddComponent(behaviourType);
             InjectionHelper.InjectMonoBehaviour(_container, monoBehaviour, args);
             return monoBehaviour;
         }
@@ -55,58 +47,69 @@ namespace ModestTree.Zenject
             // This is good so that the entire object graph is
             // contained underneath it, which is useful for cases
             // where you need to delete the entire object graph
-            gameObj.transform.parent = _compRoot.transform;
+            gameObj.transform.parent = _rootTransform;
 
             gameObj.SetActive(true);
 
             InjectionHelper.InjectChildGameObjects(_container, gameObj, args);
 
-            GameObjectInstantiated(gameObj);
-
             return gameObj;
-        }
-
-        // Create from prefab and customize name
-        // Return specific monobehaviour
-        public T Instantiate<T>(GameObject template, string name) where T : Component
-        {
-            var component = Instantiate<T>(template);
-            component.gameObject.name = name;
-            return component;
         }
 
         // Create from prefab
         // Return specific monobehaviour
-        public T Instantiate<T>(GameObject template) where T : Component
+        public T Instantiate<T>(
+            GameObject template, params object[] args) where T : Component
         {
             Assert.That(template != null, "Null template found when instantiating game object");
 
-            var obj = Instantiate(template);
+            var gameObj = (GameObject)GameObject.Instantiate(template);
 
-            var component = obj.GetComponentInChildren<T>();
+            // By default parent to comp root
+            // This is good so that the entire object graph is
+            // contained underneath it, which is useful for cases
+            // where you need to delete the entire object graph
+            gameObj.transform.parent = _rootTransform;
 
-            if (component == null)
+            gameObj.SetActive(true);
+
+            T requestedScript = null;
+
+            foreach (var component in gameObj.GetComponentsInChildren<Component>())
             {
-                throw new ZenjectResolveException(
-                    "Could not find component with type '{0}' when instantiating template".With(typeof(T)));
+                var extraArgs = Enumerable.Empty<object>();
+
+                if (component.GetType() == typeof(T))
+                {
+                    Assert.IsNull(requestedScript,
+                        "Found multiple matches with type '{0}' when instantiating new game object", typeof(T));
+                    requestedScript = (T)component;
+                    extraArgs = args;
+                }
+
+                InjectionHelper.InjectMonoBehaviour(_container, component, extraArgs);
             }
 
-            return component;
+            if (requestedScript == null)
+            {
+                throw new ZenjectResolveException(
+                    "Could not find component with type '{0}' when instantiating new game object".With(typeof(T)));
+            }
+
+            return requestedScript;
         }
 
         public object Instantiate(Type type, string name)
         {
             var gameObj = new GameObject(name);
-            gameObj.transform.parent = _compRoot.transform;
+            gameObj.transform.parent = _rootTransform;
 
             var component = gameObj.AddComponent(type);
 
-            if (type.DerivesFrom(typeof(MonoBehaviour)))
+            if (type.DerivesFrom(typeof(Component)))
             {
-                InjectionHelper.InjectMonoBehaviour(_container, (MonoBehaviour)component);
+                InjectionHelper.InjectMonoBehaviour(_container, (Component)component);
             }
-
-            GameObjectInstantiated(gameObj);
 
             return component;
         }
@@ -119,9 +122,7 @@ namespace ModestTree.Zenject
         public GameObject Instantiate(string name)
         {
             var gameObj = new GameObject(name);
-            gameObj.transform.parent = _compRoot.transform;
-
-            GameObjectInstantiated(gameObj);
+            gameObj.transform.parent = _rootTransform;
 
             return gameObj;
         }

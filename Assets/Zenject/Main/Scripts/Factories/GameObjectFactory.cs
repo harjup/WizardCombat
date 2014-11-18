@@ -4,93 +4,91 @@ using UnityEngine;
 
 namespace ModestTree.Zenject
 {
-    // Instantiate via prefab
-    public class GameObjectFactory<TContract, TConcrete> : IFactory<TContract> where TConcrete : Component, TContract
+    public abstract class GameObjectFactory : IValidatable
     {
-        DiContainer _container;
-        GameObject _prefab;
-        GameObjectInstantiator _instantiator;
+        [Inject]
+        protected readonly DiContainer _container;
 
-        public GameObjectFactory(DiContainer container, GameObject prefab)
+        [Inject]
+        protected readonly GameObject _prefab;
+
+        [Inject]
+        protected readonly GameObjectInstantiator _instantiator;
+
+        public abstract IEnumerable<ZenjectResolveException> Validate();
+    }
+
+    public class GameObjectFactory<TValue> : GameObjectFactory, IFactory<TValue>
+         where TValue : Component
+    {
+        public virtual TValue Create()
         {
-            if (!container.AllowNullBindings && prefab == null)
-            {
-                throw new ZenjectBindException(
-                    "Null prefab given for binding with type '{0}'".With(typeof(TContract)));
-            }
-
-            _prefab = prefab;
-            _container = container;
+            return _instantiator.Instantiate<TValue>(_prefab);
         }
 
-        public TContract Create(params object[] constructorArgs)
+        public override IEnumerable<ZenjectResolveException> Validate()
         {
-            if (_instantiator == null)
-            {
-                _instantiator = _container.Resolve<GameObjectInstantiator>();
-            }
-
-            var gameObj = _instantiator.Instantiate(_prefab, constructorArgs);
-
-            var component = gameObj.GetComponentInChildren<TConcrete>();
-
-            if (component == null)
-            {
-                throw new ZenjectResolveException(
-                    "Could not find component '{0}' when creating game object from prefab".With(typeof(TConcrete).Name()));
-            }
-
-            return component;
-        }
-
-        public IEnumerable<ZenjectResolveException> Validate(params Type[] extras)
-        {
-            return _container.ValidateObjectGraph<TConcrete>(extras);
+            return _container.ValidateObjectGraph<TValue>();
         }
     }
 
-    // Instantiate via prefab
-    public class GameObjectFactory<TContract> : IFactory<TContract> where TContract : Component
+    // One parameter
+    public class GameObjectFactory<TParam1, TValue> : GameObjectFactory, IFactory<TParam1, TValue>
+        where TValue : Component
     {
-        DiContainer _container;
-        GameObject _prefab;
-        GameObjectInstantiator _instantiator;
-
-        public GameObjectFactory(DiContainer container, GameObject prefab)
+        public virtual TValue Create(TParam1 param)
         {
-            if (!container.AllowNullBindings && UnityUtil.IsNull(prefab))
-            {
-                throw new ZenjectBindException(
-                    "Null prefab given for binding with type '{0}'".With(typeof(TContract)));
-            }
-
-            _prefab = prefab;
-            _container = container;
+            return _instantiator.Instantiate<TValue>(_prefab, param);
         }
 
-        public TContract Create(params object[] constructorArgs)
+        public override IEnumerable<ZenjectResolveException> Validate()
         {
-            if (_instantiator == null)
-            {
-                _instantiator = _container.Resolve<GameObjectInstantiator>();
-            }
+            return _container.ValidateObjectGraph<TValue>(typeof(TParam1));
+        }
+    }
 
-            var gameObj = _instantiator.Instantiate(_prefab, constructorArgs);
-
-            var component = gameObj.GetComponentInChildren<TContract>();
-
-            if (component == null)
-            {
-                throw new ZenjectResolveException(
-                    "Could not find component '{0}' when creating game object from prefab".With(typeof(TContract).Name()));
-            }
-
-            return component;
+    // Two parameters
+    public class GameObjectFactory<TParam1, TParam2, TValue> : GameObjectFactory, IFactory<TParam1, TParam2, TValue>
+        where TValue : Component
+    {
+        public virtual TValue Create(TParam1 param1, TParam2 param2)
+        {
+            return _instantiator.Instantiate<TValue>(_prefab, param1, param2);
         }
 
-        public IEnumerable<ZenjectResolveException> Validate(params Type[] extras)
+        public override IEnumerable<ZenjectResolveException> Validate()
         {
-            return _container.ValidateObjectGraph<TContract>(extras);
+            return _container.ValidateObjectGraph<TValue>(typeof(TParam1), typeof(TParam2));
+        }
+    }
+
+    // Three parameters
+    public class GameObjectFactory<TParam1, TParam2, TParam3, TValue> : GameObjectFactory, IFactory<TParam1, TParam2, TParam3, TValue>
+        where TValue : Component
+    {
+        public virtual TValue Create(TParam1 param1, TParam2 param2, TParam3 param3)
+        {
+            return _instantiator.Instantiate<TValue>(_prefab, param1, param2, param3);
+        }
+
+        public override IEnumerable<ZenjectResolveException> Validate()
+        {
+            return _container.ValidateObjectGraph<TValue>(typeof(TParam1), typeof(TParam2), typeof(TParam3));
+        }
+    }
+
+    // Four parameters
+    public class GameObjectFactory<TParam1, TParam2, TParam3, TParam4, TValue> : GameObjectFactory, IFactory<TParam1, TParam2, TParam3, TParam4, TValue>
+        where TValue : Component
+    {
+        public virtual TValue Create(TParam1 param1, TParam2 param2, TParam3 param3, TParam4 param4)
+        {
+            return _instantiator.Instantiate<TValue>(_prefab, param1, param2, param3, param4);
+        }
+
+        public override IEnumerable<ZenjectResolveException> Validate()
+        {
+            return _container.ValidateObjectGraph<TValue>(typeof(TParam1), typeof(TParam2), typeof(TParam3), typeof(TParam4));
         }
     }
 }

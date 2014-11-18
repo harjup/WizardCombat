@@ -26,26 +26,26 @@ namespace ModestTree.Zenject
 
         public static void InjectGameObject(DiContainer container, GameObject gameObj)
         {
-            foreach (var monoBehaviour in gameObj.GetComponents<MonoBehaviour>())
+            foreach (var component in gameObj.GetComponents<Component>())
             {
-                InjectMonoBehaviour(container, monoBehaviour);
+                InjectMonoBehaviour(container, component);
             }
         }
 
-        public static void InjectMonoBehaviour(DiContainer container, MonoBehaviour monoBehaviour)
+        public static void InjectMonoBehaviour(DiContainer container, Component component)
         {
-            InjectMonoBehaviour(container, monoBehaviour, Enumerable.Empty<object>());
+            InjectMonoBehaviour(container, component, Enumerable.Empty<object>());
         }
 
         public static void InjectMonoBehaviour(
-            DiContainer container, MonoBehaviour monoBehaviour, IEnumerable<object> extraArgs)
+            DiContainer container, Component component, IEnumerable<object> extraArgs)
         {
             // null if monobehaviour link is broken
-            if (monoBehaviour != null && monoBehaviour.enabled)
+            if (component != null)
             {
-                using (container.PushLookup(monoBehaviour.GetType()))
+                using (container.PushLookup(component.GetType()))
                 {
-                    FieldsInjecter.Inject(container, monoBehaviour, extraArgs);
+                    FieldsInjecter.Inject(container, component, extraArgs);
                 }
             }
         }

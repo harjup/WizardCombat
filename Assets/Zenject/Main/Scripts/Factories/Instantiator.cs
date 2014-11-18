@@ -15,25 +15,41 @@ namespace ModestTree.Zenject
         }
 
         public T Instantiate<T>(
-            params object[] constructorArgs)
+            params object[] extraArgs)
         {
-            return (T)Instantiate(typeof(T), constructorArgs);
+            return (T)Instantiate(typeof(T), extraArgs);
         }
 
         public object Instantiate(
-            Type concreteType, params object[] constructorArgs)
+            Type concreteType, params object[] extraArgs)
         {
-            using (ProfileBlock.Start("Zenject.Instantiate({0})".With(concreteType)))
+            Assert.That(!extraArgs.Contains(null),
+                "Null value given to factory constructor arguments when instantiating object with type '{0}'. In order to use null use InstantiateExplicit", concreteType);
+
+            return InstantiateExplicit(
+                concreteType, InstantiateUtil.CreateTypeValueList(extraArgs));
+        }
+
+        // This is used instead of Instantiate to support specifying null values
+        public T InstantiateExplicit<T>(List<TypeValuePair> extraArgMap)
+        {
+            return (T)InstantiateExplicit(typeof(T), extraArgMap);
+        }
+
+        public object InstantiateExplicit(
+            Type concreteType, List<TypeValuePair> extraArgMap)
+        {
+            using (ProfileBlock.Start("Zenject.Instantiate({0})", concreteType))
             {
                 using (_container.PushLookup(concreteType))
                 {
-                    return InstantiateInternal(concreteType, constructorArgs);
+                    return InstantiateInternal(concreteType, extraArgMap);
                 }
             }
         }
 
         object InstantiateInternal(
-            Type concreteType, params object[] constructorArgs)
+            Type concreteType, IEnumerable<TypeValuePair> extraArgMapParam)
         {
             Assert.That(!concreteType.DerivesFrom<UnityEngine.Component>(),
                 "Error occurred while instantiating object of type '{0}'. Instantiator should not be used to create new mono behaviours.  Must use GameObjectInstantiator, GameObjectFactory, or GameObject.Instantiate.", concreteType.Name());
@@ -46,38 +62,27 @@ namespace ModestTree.Zenject
                     "More than one or zero constructors found for type '{0}' when creating dependencies.  Use one [Inject] attribute to specify which to use.".With(concreteType));
             }
 
+            // Make a copy since we remove from it below
+            var extraArgMap = extraArgMapParam.ToList();
             var paramValues = new List<object>();
-            var extrasList = new List<object>(constructorArgs);
-
-            Assert.That(!extrasList.Contains(null),
-                "Null value given to factory constructor arguments. This is currently not allowed");
 
             foreach (var injectInfo in typeInfo.ConstructorInjectables)
             {
-                var found = false;
+                object value;
 
-                foreach (var extra in extrasList)
+                if (!InstantiateUtil.PopValueWithType(extraArgMap, injectInfo.ContractType, out value))
                 {
-                    if (extra.GetType().DerivesFromOrEqual(injectInfo.ContractType))
-                    {
-                        found = true;
-                        paramValues.Add(extra);
-                        extrasList.Remove(extra);
-                        break;
-                    }
+                    value = _container.Resolve(injectInfo);
                 }
 
-                if (!found)
-                {
-                    paramValues.Add(_container.Resolve(injectInfo));
-                }
+                paramValues.Add(value);
             }
 
             object newObj;
 
             try
             {
-                using (ProfileBlock.Start("{0}.{0}()".With(concreteType)))
+                using (ProfileBlock.Start("{0}.{0}()", concreteType))
                 {
                     newObj = typeInfo.InjectConstructor.Invoke(paramValues.ToArray());
                 }
@@ -88,7 +93,7 @@ namespace ModestTree.Zenject
                     "Error occurred while instantiating object with type '{0}'".With(concreteType.Name()), e);
             }
 
-            FieldsInjecter.Inject(_container, newObj, extrasList, true, typeInfo);
+            FieldsInjecter.Inject(_container, newObj, extraArgMap, true, typeInfo);
 
             return newObj;
         }

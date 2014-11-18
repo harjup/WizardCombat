@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using UnityEngine;
 using Debug = UnityEngine.Debug;
 using System.Linq;
 using System.Reflection;
@@ -83,6 +84,10 @@ namespace ModestTree
             {
                 return "";
             }
+            else if (type == typeof(Quaternion))
+            {
+                return Quaternion.identity;
+            }
             else if (type.IsGenericType)
             {
                 var genericType = type.GetGenericTypeDefinition();
@@ -97,4 +102,3 @@ namespace ModestTree
         }
     }
 }
-

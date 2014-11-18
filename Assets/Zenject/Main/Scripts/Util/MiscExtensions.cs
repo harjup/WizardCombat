@@ -49,6 +49,13 @@ namespace ModestTree
             Assert.That(removed);
         }
 
+        public static TVal GetValueAndRemove<TKey, TVal>(this IDictionary<TKey, TVal> dictionary, TKey key)
+        {
+            TVal val = dictionary[key];
+            dictionary.RemoveWithConfirm(key);
+            return val;
+        }
+
         public static void AddWithConfirm<T>(this HashSet<T> set, T item)
         {
             bool removed = set.Add(item);

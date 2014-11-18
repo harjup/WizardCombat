@@ -24,73 +24,64 @@ namespace ModestTree.Zenject
             Inject(container, injectable, additional, shouldUseAll, TypeAnalyzer.GetInfo(injectable.GetType()));
         }
 
-        internal static void Inject(DiContainer container, object injectable, IEnumerable<object> additional, bool shouldUseAll, ZenjectTypeInfo typeInfo)
+        internal static void Inject(
+            DiContainer container, object injectable,
+            IEnumerable<object> additional, bool shouldUseAll, ZenjectTypeInfo typeInfo)
+        {
+            Assert.That(!additional.Contains(null),
+                "Null value given to injection argument list. In order to use null you must provide a List<TypeValuePair> and not just a list of objects");
+
+            Inject(
+                container, injectable,
+                InstantiateUtil.CreateTypeValueList(additional), shouldUseAll, typeInfo);
+        }
+
+        internal static void Inject(
+            DiContainer container, object injectable,
+            IEnumerable<TypeValuePair> extraArgMapParam, bool shouldUseAll, ZenjectTypeInfo typeInfo)
         {
             Assert.IsEqual(typeInfo.TypeAnalyzed, injectable.GetType());
             Assert.That(injectable != null);
 
-            var additionalCopy = additional.ToList();
+            // Make a copy since we remove from it below
+            var extraArgMap = extraArgMapParam.ToList();
 
             foreach (var injectInfo in typeInfo.FieldInjectables.Concat(typeInfo.PropertyInjectables))
             {
-                bool didInject = InjectFromExtras(injectInfo, injectable, additionalCopy);
+                object value;
 
-                if (!didInject)
+                if (InstantiateUtil.PopValueWithType(extraArgMap, injectInfo.ContractType, out value))
                 {
-                    InjectFromResolve(injectInfo, container, injectable);
+                    injectInfo.Setter(injectable, value);
+                }
+                else
+                {
+                    value = container.Resolve(injectInfo, injectable);
+
+                    if (injectInfo.Optional && value == null)
+                    {
+                        // Do not override in this case so it retains the hard-coded value
+                    }
+                    else
+                    {
+                        injectInfo.Setter(injectable, value);
+                    }
                 }
             }
 
-            if (shouldUseAll && !additionalCopy.IsEmpty())
+            if (shouldUseAll && !extraArgMap.IsEmpty())
             {
                 throw new ZenjectResolveException(
                     "Passed unnecessary parameters when injecting into type '{0}'. \nExtra Parameters: {1}\nObject graph:\n{2}"
-                        .With(injectable.GetType().Name(), String.Join(",", additionalCopy.Select(x => x.GetType().Name()).ToArray()), DiContainer.GetCurrentObjectGraph()));
+                        .With(injectable.GetType().Name(), String.Join(",", extraArgMap.Select(x => x.Type.Name()).ToArray()), DiContainer.GetCurrentObjectGraph()));
             }
 
             foreach (var methodInfo in typeInfo.PostInjectMethods)
             {
-                using (ProfileBlock.Start("{0}.{1}()".With(injectable.GetType(), methodInfo.Name)))
+                using (ProfileBlock.Start("{0}.{1}()", injectable.GetType(), methodInfo.Name))
                 {
                     methodInfo.Invoke(injectable, new object[0]);
                 }
-            }
-        }
-
-        static bool InjectFromExtras(
-            InjectableInfo injectInfo,
-            object injectable, List<object> additional)
-        {
-            foreach (object obj in additional)
-            {
-                if (injectInfo.ContractType.IsAssignableFrom(obj.GetType()))
-                {
-                    Assert.IsNotNull(injectInfo.Setter);
-
-                    injectInfo.Setter(injectable, obj);
-                    additional.Remove(obj);
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        static void InjectFromResolve(
-            InjectableInfo injectInfo, DiContainer container, object targetInstance)
-        {
-            var valueObj = container.Resolve(injectInfo, targetInstance);
-
-            if (valueObj == null && !container.AllowNullBindings)
-            {
-                // Do not change if optional
-                // Since it may have some hard coded value
-                Assert.That(injectInfo.Optional); // Should have thrown resolve exception otherwise
-            }
-            else
-            {
-                Assert.IsNotNull(injectInfo.Setter);
-                injectInfo.Setter(targetInstance, valueObj);
             }
         }
     }

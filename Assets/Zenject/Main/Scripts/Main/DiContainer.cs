@@ -23,6 +23,8 @@ namespace ModestTree.Zenject
         ProviderBase _fallbackProvider;
         Instantiator _instantiator;
 
+        readonly List<IInstaller> _installedInstallers = new List<IInstaller>();
+
         public DiContainer()
         {
             _singletonMap = new SingletonProviderMap(this);
@@ -30,6 +32,14 @@ namespace ModestTree.Zenject
 
             Bind<DiContainer>().To(this);
             Bind<Instantiator>().To(_instantiator);
+        }
+
+        public IEnumerable<IInstaller> InstalledInstallers
+        {
+            get
+            {
+                return _installedInstallers;
+            }
         }
 
         // This can be used to handle the case where the given contract is not
@@ -89,7 +99,7 @@ namespace ModestTree.Zenject
         {
             get
             {
-                return (from x in _providers from p in x.Value where p.HasInstance(p.GetInstanceType()) select p.GetInstance(p.GetInstanceType(), new InjectContext()));
+                return (from x in _providers from p in x.Value where p.HasInstance(p.GetInstanceType()) select p.GetInstance(p.GetInstanceType(), new InjectContext(this)));
             }
         }
 
@@ -113,8 +123,87 @@ namespace ModestTree.Zenject
             return _lookupsInProgress.Select(t => t.Name()).Reverse().Aggregate((i, str) => i + "\n" + str);
         }
 
-        // This occurs so often that we might as well have a convenience method
+        public BindingConditionSetter BindGameObjectFactory<T>(GameObject prefab)
+            // This would be useful but fails with VerificationException's in webplayer builds for some reason
+            //where T : GameObjectFactory
+            where T : class
+        {
+            if (prefab == null)
+            {
+                throw new ZenjectBindException(
+                    "Null prefab provided to BindGameObjectFactory for type '{0}'".With(typeof(T).Name()));
+            }
+            // We could bind the factory ToSingle but doing it this way is better
+            // since it allows us to have multiple game object factories that
+            // use different prefabs and have them injected into different places
+            return Bind<T>().ToMethod(c => c.Instantiate<T>(prefab));
+        }
+
+        public BindingConditionSetter BindFactoryToMethodUntyped<TContract>(Func<DiContainer, object[], TContract> method)
+        {
+            return Bind<IFactoryUntyped<TContract>>().To(new FactoryMethodUntyped<TContract>(this, method));
+        }
+
+        public BindingConditionSetter BindFactoryToMethod<TContract>(Func<DiContainer, TContract> method)
+        {
+            return Bind<IFactory<TContract>>().ToMethod((c) => c.Instantiate<FactoryMethod<TContract>>(method));
+        }
+
+        public BindingConditionSetter BindFactoryToMethod<TParam1, TContract>(Func<DiContainer, TParam1, TContract> method)
+        {
+            return Bind<IFactory<TParam1, TContract>>().ToMethod((c) => c.Instantiate<FactoryMethod<TParam1, TContract>>(method));
+        }
+
+        public BindingConditionSetter BindFactoryToMethod<TParam1, TParam2, TContract>(Func<DiContainer, TParam1, TParam2, TContract> method)
+        {
+            return Bind<IFactory<TParam1, TParam2, TContract>>().ToMethod((c) => c.Instantiate<FactoryMethod<TParam1, TParam2, TContract>>(method));
+        }
+
+        public BindingConditionSetter BindFactoryToMethod<TParam1, TParam2, TParam3, TContract>(Func<DiContainer, TParam1, TParam2, TParam3, TContract> method)
+        {
+            return Bind<IFactory<TParam1, TParam2, TParam3, TContract>>().ToMethod((c) => c.Instantiate<FactoryMethod<TParam1, TParam2, TParam3, TContract>>(method));
+        }
+
         public BindingConditionSetter BindFactory<TContract>()
+        {
+            return Bind<IFactory<TContract>>().ToSingle<Factory<TContract>>();
+        }
+
+        public BindingConditionSetter BindFactory<TParam1, TContract>()
+        {
+            return Bind<IFactory<TParam1, TContract>>().ToSingle<Factory<TParam1, TContract>>();
+        }
+
+        // Bind IFactory<TContract> such that it creates instances of type TConcrete
+        public BindingConditionSetter BindFactoryToFactory<TContract, TConcrete>()
+            where TConcrete : TContract
+        {
+            return BindFactoryToMethod<TContract>((c) => c.Resolve<IFactory<TConcrete>>().Create());
+        }
+
+        public BindingConditionSetter BindFactoryToFactory<TParam1, TContract, TConcrete>()
+            where TConcrete : TContract
+        {
+            return BindFactoryToMethod<TParam1, TContract>((c, param1) => c.Resolve<IFactory<TParam1, TConcrete>>().Create(param1));
+        }
+
+        public BindingConditionSetter BindFactoryToCustomFactory<TContract, TConcrete, TFactory>()
+            where TFactory : IFactory<TConcrete>
+            where TConcrete : TContract
+        {
+            return BindFactoryToMethod<TContract>((c) => c.Resolve<TFactory>().Create());
+        }
+
+        // Bind IFactory<TContract> to the given factory
+        public BindingConditionSetter BindFactoryToCustomFactory<TParam1, TContract, TConcrete, TFactory>()
+            where TFactory : IFactory<TParam1, TConcrete>
+            where TConcrete : TContract
+        {
+            return BindFactoryToMethod<TParam1, TContract>((c, param1) => c.Resolve<TFactory>().Create(param1));
+        }
+
+        // This occurs so often that we might as well have a convenience method
+        public BindingConditionSetter BindFactoryUntyped<TContract>()
         {
             if (typeof(TContract).DerivesFrom(typeof(MonoBehaviour)))
             {
@@ -123,10 +212,10 @@ namespace ModestTree.Zenject
                     .With(typeof(TContract).Name()));
             }
 
-            return Bind<IFactory<TContract>>().ToSingle<Factory<TContract>>();
+            return Bind<IFactoryUntyped<TContract>>().ToSingle<FactoryUntyped<TContract>>();
         }
 
-        public BindingConditionSetter BindFactory<TContract, TConcrete>() where TConcrete : TContract
+        public BindingConditionSetter BindFactoryUntyped<TContract, TConcrete>() where TConcrete : TContract
         {
             if (typeof(TContract).DerivesFrom(typeof(MonoBehaviour)))
             {
@@ -135,24 +224,32 @@ namespace ModestTree.Zenject
                     .With(typeof(TConcrete).Name()));
             }
 
-            return Bind<IFactory<TContract>>().ToSingle<Factory<TContract, TConcrete>>();
+            return Bind<IFactoryUntyped<TContract>>().ToSingle<FactoryUntyped<TContract, TConcrete>>();
         }
 
-        public BindingConditionSetter BindFactory<TContract>(GameObject prefab) where TContract : Component
+        public BindingConditionSetter BindFactoryForPrefab<TContract>(GameObject prefab) where TContract : Component
         {
-            return Bind<IFactory<TContract>>()
-                .To(new GameObjectFactory<TContract>(this, prefab));
-        }
+            if (prefab == null)
+            {
+                throw new ZenjectBindException(
+                    "Null prefab provided to BindFactoryForPrefab for type '{0}'".With(typeof(TContract).Name()));
+            }
 
-        public BindingConditionSetter BindFactory<TContract, TConcrete>(GameObject prefab) where TConcrete : Component, TContract
-        {
+            // We could use ToSingleMethod here but then we'd have issues when using .When() conditionals to inject
+            // multiple factories in different places
             return Bind<IFactory<TContract>>()
-                .To(new GameObjectFactory<TContract, TConcrete>(this, prefab));
+                .ToMethod((container) => container.Instantiate<GameObjectFactory<TContract>>(prefab));
         }
 
         public ValueBinder<TContract> BindValue<TContract>() where TContract : struct
         {
             return new ValueBinder<TContract>(this);
+        }
+
+        public ReferenceBinder<TContract> Rebind<TContract>() where TContract : class
+        {
+            Unbind<TContract>();
+            return Bind<TContract>();
         }
 
         public ReferenceBinder<TContract> Bind<TContract>() where TContract : class
@@ -218,6 +315,67 @@ namespace ModestTree.Zenject
             return numRemoved;
         }
 
+        public IEnumerable<ZenjectResolveException> ValidateValidatables(params Type[] ignoreTypes)
+        {
+            var injectCtx = new InjectContext(this);
+
+            foreach (var pair in _providers)
+            {
+                if (ignoreTypes.Where(i => pair.Key.DerivesFromOrEqual(i)).Any())
+                {
+                    continue;
+                }
+
+                List<ProviderBase> validatableFactoryProviders;
+
+                if (pair.Key.DerivesFrom<IValidatableFactory>())
+                {
+                    validatableFactoryProviders = pair.Value;
+                }
+                else
+                {
+                    validatableFactoryProviders = pair.Value.Where(x => x.GetInstanceType().DerivesFrom<IValidatableFactory>()).ToList();
+                }
+
+                foreach (var provider in validatableFactoryProviders)
+                {
+                    var factory = (IValidatableFactory)provider.GetInstance(pair.Key, injectCtx);
+
+                    var type = factory.ConstructedType;
+                    var providedArgs = factory.ProvidedTypes;
+
+                    foreach (var error in ValidateObjectGraph(type, providedArgs))
+                    {
+                        yield return error;
+                    }
+                }
+
+                List<ProviderBase> validatableProviders;
+
+                if (pair.Key.DerivesFrom<IValidatable>())
+                {
+                    validatableProviders = pair.Value;
+                }
+                else
+                {
+                    validatableProviders = pair.Value.Where(x => x.GetInstanceType().DerivesFrom<IValidatable>()).ToList();
+                }
+
+                Assert.That(validatableFactoryProviders.Intersect(validatableProviders).IsEmpty(),
+                    "Found provider implementing both IValidatable and IValidatableFactory.  This is not allowed.");
+
+                foreach (var provider in validatableProviders)
+                {
+                    var factory = (IValidatable)provider.GetInstance(pair.Key, injectCtx);
+
+                    foreach (var error in factory.Validate())
+                    {
+                        yield return error;
+                    }
+                }
+            }
+        }
+
         // Walk the object graph for the given type
         // Throws ZenjectResolveException if there is a problem
         // Note: If you just want to know whether a binding exists for the given TContract,
@@ -231,7 +389,7 @@ namespace ModestTree.Zenject
         // Throws ZenjectResolveException if there is a problem
         public IEnumerable<ZenjectResolveException> ValidateResolve(Type contractType)
         {
-            return ValidateResolve(contractType, new InjectContext());
+            return ValidateResolve(contractType, new InjectContext(this));
         }
 
         public IEnumerable<ZenjectResolveException> ValidateResolve<TContract>(InjectContext context)
@@ -275,7 +433,7 @@ namespace ModestTree.Zenject
 
         public List<TContract> ResolveMany<TContract>(bool optional)
         {
-            var context = new InjectContext();
+            var context = new InjectContext(this);
             context.Optional = optional;
             return ResolveMany<TContract>(context);
         }
@@ -287,46 +445,32 @@ namespace ModestTree.Zenject
 
         public object ResolveMany(Type contract)
         {
-            return ResolveMany(contract, new InjectContext());
+            return ResolveMany(contract, new InjectContext(this));
         }
 
         // Wrap IEnumerable<> to avoid LINQ mistakes
         internal List<ProviderBase> GetProviderMatches(Type contractType)
         {
-            return GetProviderMatches(contractType, new InjectContext());
+            return GetProviderMatches(contractType, new InjectContext(this));
         }
 
         // Wrap IEnumerable<> to avoid LINQ mistakes
         internal List<ProviderBase> GetProviderMatches(Type contractType, InjectContext context)
         {
-            return GetProviderMatches(contractType, context, false);
-        }
-
-        // Wrap IEnumerable<> to avoid LINQ mistakes
-        internal List<ProviderBase> GetProviderMatches(
-            Type contractType, InjectContext context, bool soft)
-        {
-            return GetProviderMatchesInternal(contractType, context, soft).ToList();
+            return GetProviderMatchesInternal(contractType, context).ToList();
         }
 
         IEnumerable<ProviderBase> GetProviderMatchesInternal(Type contractType)
         {
             return GetProviderMatchesInternal(
-                contractType, new InjectContext(), false);
+                contractType, new InjectContext(this));
         }
 
         // Be careful with this method since it is a coroutine
         IEnumerable<ProviderBase> GetProviderMatchesInternal(
-            Type contractType, InjectContext context, bool soft)
+            Type contractType, InjectContext context)
         {
-            var providers = GetProvidersForContract(contractType).Where(x => x.Matches(context));
-
-            if (soft)
-            {
-                return providers.Where(x => x.HasInstance(contractType));
-            }
-
-            return providers;
+            return GetProvidersForContract(contractType).Where(x => x.Matches(context));
         }
 
         internal IEnumerable<ProviderBase> GetProvidersForContract(Type contractType)
@@ -350,7 +494,7 @@ namespace ModestTree.Zenject
 
         public bool HasBinding(Type contract)
         {
-            return HasBinding(contract, new InjectContext());
+            return HasBinding(contract, new InjectContext(this));
         }
 
         public bool HasBinding(Type contract, InjectContext context)
@@ -370,17 +514,11 @@ namespace ModestTree.Zenject
             return HasBinding(typeof(TContract));
         }
 
-        public object ResolveMany(Type contract, InjectContext context)
-        {
-            // Soft == false, always create new instances when possible
-            return ResolveMany(contract, context, false);
-        }
-
-        public object ResolveMany(Type contractType, InjectContext context, bool soft)
+        public object ResolveMany(Type contractType, InjectContext context)
         {
             // Note that different types can map to the same provider (eg. a base type to a concrete class and a concrete class to itself)
 
-            var matches = GetProviderMatchesInternal(contractType, context, soft).ToList();
+            var matches = GetProviderMatchesInternal(contractType, context).ToList();
 
             if (matches.Any())
             {
@@ -394,10 +532,7 @@ namespace ModestTree.Zenject
                 {
                     var listType = typeof(List<>).MakeGenericType(contractType);
 
-                    if (!soft || (soft && _fallbackProvider.HasInstance(listType)))
-                    {
-                        return _fallbackProvider.GetInstance(listType, context);
-                    }
+                    return _fallbackProvider.GetInstance(listType, context);
                 }
 
                 throw new ZenjectResolveException(
@@ -423,10 +558,8 @@ namespace ModestTree.Zenject
         // And we also want earlier installers to be able to configure later installers
         // So we need to Resolve() one at a time, removing each installer binding
         // as we go
-        public List<IInstaller> InstallInstallers()
+        public void InstallInstallers()
         {
-            var allInstallers = new List<IInstaller>();
-
             while (true)
             {
                 var provider = GetProviderMatchesInternal(typeof(IInstaller)).FirstOrDefault();
@@ -436,24 +569,21 @@ namespace ModestTree.Zenject
                     break;
                 }
 
-                var installer = (IInstaller)provider.GetInstance(typeof(IInstaller), new InjectContext());
+                var installer = (IInstaller)provider.GetInstance(typeof(IInstaller), new InjectContext(this));
 
                 Assert.IsNotNull(installer);
 
                 UnregisterProvider(provider);
 
-                installer.InstallBindings();
-
-                if (allInstallers.Where(x => x.GetType() == installer.GetType()).Any())
+                if (_installedInstallers.Where(x => x.GetType() == installer.GetType()).Any())
                 {
-                    throw new ZenjectException(
-                        "Found multiple installers with type '{0}'.  Expected only one".With(installer.GetType().Name()));
+                    // Do not install the same installer twice
+                    continue;
                 }
 
-                allInstallers.Add(installer);
+                installer.InstallBindings();
+                _installedInstallers.Add(installer);
             }
-
-            return allInstallers;
         }
 
         internal object Resolve(InjectableInfo injectInfo)
@@ -465,7 +595,7 @@ namespace ModestTree.Zenject
             InjectableInfo injectInfo, object targetInstance)
         {
             var context = new InjectContext(
-                injectInfo, LookupsInProgress.ToList(), targetInstance);
+                this, injectInfo, LookupsInProgress.ToList(), targetInstance);
 
             return Resolve(injectInfo.ContractType, context);
         }
@@ -473,7 +603,7 @@ namespace ModestTree.Zenject
         // Return single instance of requested type or assert
         public TContract Resolve<TContract>()
         {
-            return Resolve<TContract>(new InjectContext());
+            return Resolve<TContract>(new InjectContext(this));
         }
 
         public TContract Resolve<TContract>(InjectContext context)
@@ -483,14 +613,14 @@ namespace ModestTree.Zenject
 
         public object Resolve(Type contract)
         {
-            return Resolve(contract, new InjectContext());
+            return Resolve(contract, new InjectContext(this));
         }
 
         public object Resolve(Type contractType, InjectContext context)
         {
             // Note that different types can map to the same provider (eg. a base type to a concrete class and a concrete class to itself)
 
-            var providers = GetProviderMatchesInternal(contractType, context, false).ToList();
+            var providers = GetProviderMatchesInternal(contractType, context).ToList();
 
             if (providers.IsEmpty())
             {
@@ -533,7 +663,7 @@ namespace ModestTree.Zenject
             }
         }
 
-        public bool ReleaseBindings<TContract>()
+        public bool Unbind<TContract>()
         {
             List<ProviderBase> providersToRemove;
 
@@ -567,6 +697,19 @@ namespace ModestTree.Zenject
             {
                 yield return injectMember.ContractType;
             }
+        }
+
+        // Same as Instantiate except you can pas in null value
+        // however the type for each parameter needs to be explicitly provided in this case
+        public T InstantiateExplicit<T>(List<TypeValuePair> extraArgList)
+        {
+            return _instantiator.InstantiateExplicit<T>(extraArgList);
+        }
+
+        public object InstantiateExplicit(
+            Type concreteType, List<TypeValuePair> extraArgList)
+        {
+            return _instantiator.InstantiateExplicit(concreteType, extraArgList);
         }
 
         public T Instantiate<T>(params object[] constructorArgs)

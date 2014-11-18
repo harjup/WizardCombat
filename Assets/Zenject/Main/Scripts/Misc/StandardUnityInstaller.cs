@@ -1,25 +1,29 @@
 using System;
 using System.Linq;
+using UnityEngine;
 
 namespace ModestTree.Zenject
 {
     public class StandardUnityInstaller : Installer
     {
+        [Inject]
+        GameObject _root;
+
         // Install basic functionality for most unity apps
         public override void InstallBindings()
         {
-            _container.Bind<UnityKernel>().ToSingleGameObject();
+            Container.Bind<IDependencyRoot>().ToSingleMonoBehaviour<UnityDependencyRoot>(_root);
 
-            _container.Bind<UnityEventManager>().ToSingleGameObject();
-            _container.Bind<GameObjectInstantiator>().ToSingle();
+            Container.Bind<TickableManager>().ToSingle();
+            Container.Bind<GameObjectInstantiator>().ToSingle();
+            Container.Bind<Transform>().To(_root == null ? null : _root.transform)
+                .WhenInjectedInto<GameObjectInstantiator>();
 
-            _container.Bind<StandardKernel>().ToSingle();
-            // TODO: Do this instead:
-            //_container.Bind<IKernel>().ToTransient<StandardKernel>();
+            Container.Bind<InitializableManager>().ToSingle();
+            Container.Bind<DisposableManager>().ToSingle();
 
-            _container.Bind<InitializableHandler>().ToSingle();
-            _container.Bind<DisposablesHandler>().ToSingle();
-            _container.Bind<ITickable>().ToLookup<UnityEventManager>();
+            Container.Bind<UnityEventManager>().ToSingleGameObject();
+            Container.Bind<ITickable>().ToLookup<UnityEventManager>();
         }
     }
 }
