@@ -55,8 +55,8 @@ namespace ModestTree
     {
     }
 
-    /*[CustomEditor(typeof(CompositionRoot))]
+    [CustomEditor(typeof(CompositionRoot))]
     internal sealed class CompositionRootEditor : InstallersListInspector
     {
-    }*/
+    }
 }

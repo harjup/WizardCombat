@@ -14,7 +14,7 @@ namespace ModestTree.Zenject
     {
         public static void Debug(string message, params object[] args)
         {
-            UnityEngine.Debug.Log(string.Format(message, args));
+            //UnityEngine.Debug.Log(string.Format(message, args));
         }
 
         /////////////
