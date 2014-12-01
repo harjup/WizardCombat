@@ -30,8 +30,11 @@ public class MyGameInstaller : MonoInstaller
         Container.Bind<PlayerGuyHooks>().ToTransientFromPrefab<PlayerGuyHooks>(MySettings.PlayerGuy.Prefab).WhenInjectedInto<PlayerGuy>();
 
         Container.Bind<ZenPickup>().ToSingle();
+        Container.Bind<ZenPickup.Factory>().ToSingle();
         Container.Bind<IInitializable>().ToSingle<ZenPickup>();
         Container.Bind<PickupHooks>().ToTransientFromPrefab<PickupHooks>(MySettings.Pickup.Prefab).WhenInjectedInto<ZenPickup>();
+
+        Container.Bind<SpawnPointLocator>().ToSingleGameObject();
 
         Container.Bind<IFixedTickable>().ToSingle<CameraFollow>();
 
@@ -64,12 +67,19 @@ public class MySettings
 public class MyGameRunner : ITickable, IInitializable
 {
     private PlayerGuy _playerGuy;
-    private ZenPickup _zenPickup;
+    private ZenPickup.Factory _zenPickupFactory;
 
-    public MyGameRunner(PlayerGuy playerGuy, ZenPickup zenPickup)
+    public MyGameRunner(PlayerGuy playerGuy, ZenPickup.Factory zenPickupFactory, SpawnPointLocator spawnPointLocator)
     {
         _playerGuy = playerGuy;
-        _zenPickup = zenPickup;
+        _zenPickupFactory = zenPickupFactory;
+
+        foreach (var powerUpSpawnPoint in spawnPointLocator.Find(SpawnPoint.SpawnType.ZenPowerup))
+        {
+            ZenPickup zenPickup = _zenPickupFactory.Create();
+            zenPickup.Position = powerUpSpawnPoint.transform.position;
+        }
+        
     }
 
     public void Initialize()

@@ -22,6 +22,10 @@ public class ZenPickup : IInitializable
         //_parallelAsyncTaskProcessor.Process(SpawnCooldown());
     }
 
+    public Vector3 Position
+    {
+        set { _pickupHooks.transform.position = value; }
+    }
 
     IEnumerator SpawnCooldown()
     {
@@ -34,7 +38,7 @@ public class ZenPickup : IInitializable
         if (!_pickupAllowed) return;
 
 
-        var userReceiver = other.GetComponent<PlayerGuyHooks>();
+        var userReceiver = other.GetComponent<PlayerHandsCollider>();
         if (userReceiver != null)
         {
             userReceiver.GetPickup();
@@ -51,4 +55,10 @@ public class ZenPickup : IInitializable
         yield return _timerFactory.CreateTimer(1f);
         _pickupHooks.KillUrSelf();
     }
+
+
+    public class Factory : Factory<ZenPickup>
+    {
+    }
+
 }

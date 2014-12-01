@@ -4,22 +4,23 @@ using System.Collections;
 
 public class PlayerGuyHooks : MonoBehaviour {
 
-    public event Action<Collider> TriggerEnter = delegate { };
     public event Action PickupEvent = delegate { };
     public Rigidbody Rigidbody;
+
+    private PlayerHandsCollider _playerHandsCollider;
+    public PlayerHandsCollider PlayerHandsCollider 
+    {
+        get
+        {
+            return _playerHandsCollider ?? (_playerHandsCollider = GetComponentInChildren<PlayerHandsCollider>()); 
+        }
+    }
 
     public void Start()
     {
         Rigidbody = GetComponent<Rigidbody>();
+        
+        PlayerHandsCollider.PickupEvent += PickupEvent;
     }
 
-    public void OnTriggerEnter(Collider other)
-    {
-        TriggerEnter(other);
-    }
-
-    public void GetPickup()
-    {
-        PickupEvent();
-    }
 }
