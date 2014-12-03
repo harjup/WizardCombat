@@ -41,6 +41,8 @@ public class MyGameInstaller : MonoInstaller
         Container.Bind<PlayerGuy>().ToSingle();
         Container.Bind<ITickable>().ToSingle<PlayerGuy>();
         Container.Bind<IInitializable>().ToSingle<PlayerGuy>();
+
+        Container.Bind<DebugGuiHooks>().ToSingleFromPrefab<DebugGuiHooks>(MySettings.DebugGuiHooksPrefab);
     }
 }
 
@@ -62,6 +64,8 @@ public class MySettings
     {
         public GameObject Prefab;
     }
+
+    public GameObject DebugGuiHooksPrefab;
 }
 
 public class MyGameRunner : ITickable, IInitializable

@@ -11,20 +11,26 @@ public class PlayerGuy : ITickable, IInitializable
     private readonly TimerFactory _timerFactory;
     private readonly Camera _camera;
 
+    private readonly DebugGuiHooks _debugGuiHooks;
+
     private const float MaxSpeed = 10f;
     private IEnumerator _timerRoutine;
     private int _speedLevel = 1;
     private const int MaxSpeedLevel = 5;
     
+    
+
     public PlayerGuy(PlayerGuyHooks playerGuyHooks, ParallelAsyncTaskProcessor asyncTaskProcessor,
-        CameraManager cameraManager)
+        CameraManager cameraManager, DebugGuiHooks debugGuiHooks)
     {
         _playerGuyHooks = playerGuyHooks;
         _asyncTaskProcessor = asyncTaskProcessor;
         _camera = cameraManager.Main;
 
         _playerGuyHooks.PlayerHandsCollider.PickupEvent += () => Log.Debug("Got a pickup");
-        
+
+        _debugGuiHooks = debugGuiHooks;
+
         _timerFactory = new TimerFactory();
     }
 
