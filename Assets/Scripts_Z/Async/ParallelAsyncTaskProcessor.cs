@@ -148,4 +148,35 @@ public class ParallelAsyncTaskProcessor : ITickable
         public IEnumerator Process;
         public Action<object> Callback;
     }
+
+    // Hopefully will kill any coroutines started with a paricular enumerator.
+    // And not break anything...
+    // TODO: Make sure this works correctly, 
+    // TODO: Determine if this should be deferred to occur on the next Tick like AddNewWorkers does
+    public void Cancel(IEnumerator coroutine)
+    {
+        IEnumerable<Stack<WorkerData>> stacksToClean = _workerStacks
+            .Where(workerStack => workerStack.FirstOrDefault(w => w.Process == coroutine) != null)
+            .ToList();
+
+        IEnumerable<Stack<WorkerData>> remainingStacks = _workerStacks
+            .Where(workerStack => workerStack.FirstOrDefault(w => w.Process == coroutine) == null)
+            .ToList();
+
+        foreach (var stack in stacksToClean)
+        {
+            while (stack.Peek().Process != coroutine)
+            {
+                stack.Pop();
+            }
+            if (stack.Peek() != null)
+            {
+                stack.Pop();
+            }
+        }
+
+        _workerStacks = remainingStacks.Concat(stacksToClean).ToList();
+        CullWorkerStacks();
+    }
+
 }

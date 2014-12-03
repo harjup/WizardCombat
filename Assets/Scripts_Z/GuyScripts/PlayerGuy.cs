@@ -12,7 +12,7 @@ public class PlayerGuy : ITickable, IInitializable
     private readonly Camera _camera;
 
     private const float MaxSpeed = 10f;
-    private IEnumerator _timerRoutine = null;
+    private IEnumerator _timerRoutine;
     private int _speedLevel = 1;
     private const int MaxSpeedLevel = 5;
     
@@ -93,23 +93,28 @@ public class PlayerGuy : ITickable, IInitializable
 
     void MovePlayer()
     {
-        if (_timerRoutine == null && _speedLevel < MaxSpeedLevel)
+        Vector3 movementDirection = GetMovementDirection();
+
+        if (_timerRoutine == null && _speedLevel < MaxSpeedLevel && movementDirection != Vector3.zero)
         {
             _timerRoutine = _timerFactory.CreateTimer(_speedLevel + 1);
             _asyncTaskProcessor.Process(_timerRoutine, () =>
             {
                 _speedLevel++;
-                //Camera.main.fieldOfView = 59 + _speedLevel;
+                Log.Debug("Speedlevel: {0}", _speedLevel);
                 _timerRoutine = null;
             });
         }
 
-        Vector3 movementDirection = GetMovementDirection();
-
         if (movementDirection == Vector3.zero)
         {
             _speedLevel = 1;
-            //Camera.main.fieldOfView = 59 + _speedLevel;
+
+            if (_timerRoutine != null)
+            {
+                _asyncTaskProcessor.Cancel(_timerRoutine);
+                _timerRoutine = null;
+            }
         }
 
         //If the user is inputting a direction increment our accelerate timer
@@ -119,7 +124,6 @@ public class PlayerGuy : ITickable, IInitializable
         //Also if we have a nonzero velocity lets have the mesh kinda rotated forward
         //and bobbing as a little placeholder, more rotated per speed level
 
-        //This should eventually be a linear increase
         var velocity = movementDirection * (_speedLevel * MaxSpeed);
 
         //Set direction and speed
@@ -129,13 +133,5 @@ public class PlayerGuy : ITickable, IInitializable
                                     .SetZ(velocity.z);
     }
 
-    public IEnumerator CreateTimer(float seconds)
-    {
-        var timeRemaining = seconds;
-        while (timeRemaining > 0)
-        {
-            timeRemaining -= Time.deltaTime;
-            yield return null;
-        }
-    }
+
 }
