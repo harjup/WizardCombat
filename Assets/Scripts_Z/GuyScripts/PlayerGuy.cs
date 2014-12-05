@@ -16,7 +16,7 @@ public class PlayerGuy : ITickable, IInitializable
     private const float MaxSpeed = 10f;
     private IEnumerator _timerRoutine;
     private int _speedLevel = 1;
-    private const int MaxSpeedLevel = 5;
+    private const int MaxSpeedLevel = 3;
     
     
 
@@ -52,6 +52,7 @@ public class PlayerGuy : ITickable, IInitializable
     public void Tick()
     {
         MovePlayer();
+        CheckForClimbableSurfaces();
     }
 
     public void RotateTo(Vector3 rotation)
@@ -135,9 +136,48 @@ public class PlayerGuy : ITickable, IInitializable
         //Set direction and speed
         Rigidbody.velocity = Rigidbody.velocity
                                     .SetX(velocity.x)
-                                    .SetY(0f)
                                     .SetZ(velocity.z);
     }
 
+    private const float playerHeight = 1f;
+    private Vector3 _climbTarget;
+    private void CheckForClimbableSurfaces()
+    {
+        RaycastHit hit;
+        var distanceTraveledLastFrame = (Rigidbody.velocity * Time.fixedDeltaTime).magnitude * 2.5;
+        if (Physics.Raycast(Transform.position, Forward, out hit))
+        {
+            //TODO: Figure out when we should ledge-climb, probably based on speed/direction/distance
+            if (hit.distance < distanceTraveledLastFrame)
+            {
+                var playerTop = Transform.position.y + playerHeight / 2f;
+                
+                Debug.DrawLine(Transform.position, hit.point, Color.cyan);
+                Debug.DrawLine(hit.point, hit.point.SetY(hit.point.y + 2), Color.grey);
+                
+                RaycastHit[] hits;
+                hits = Physics.RaycastAll(hit.point.SetY(hit.point.y + 10f) + Forward, Vector3.down, 100);
+                foreach (var raycastHit in hits)
+                {
+                    var distance = Mathf.Abs(raycastHit.point.y - playerTop);
+                    if (!(distance < .5f)) continue;
 
+                    Debug.DrawLine(_climbTarget, _climbTarget.SetY(_climbTarget.y + 2), Color.red);
+
+                    _climbTarget = raycastHit.point;
+                    Rigidbody.position = _climbTarget.SetY(_climbTarget.y + playerHeight/2f);
+
+                    if (_speedLevel > 1) _speedLevel--;
+                    return;
+                }
+
+                _speedLevel = 1;
+                Rigidbody.velocity = Rigidbody
+                    .velocity
+                    .SetX(0f)
+                    .SetZ(0f);
+            }
+        }
+        _climbTarget = Vector3.zero;
+    }
 }
