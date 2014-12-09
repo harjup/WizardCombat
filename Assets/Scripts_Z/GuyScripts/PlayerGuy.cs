@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using Assets.Scripts.Managers;
 using ModestTree.Zenject;
 using UnityEngine;
@@ -15,10 +16,13 @@ public class PlayerGuy : ITickable, IInitializable
 
     private const float MaxSpeed = 10f;
     private IEnumerator _timerRoutine;
+    private IEnumerator _walkingTimeout = null;
+    private IEnumerator _climbingRoutine = null;
     private int _speedLevel = 1;
     private const int MaxSpeedLevel = 3;
-    
-    
+
+    private const float PlayerHeight = 1f;
+    private Vector3? _climbTarget;
 
     public PlayerGuy(PlayerGuyHooks playerGuyHooks, ParallelAsyncTaskProcessor asyncTaskProcessor,
         CameraManager cameraManager, DebugGuiHooks debugGuiHooks)
@@ -51,18 +55,29 @@ public class PlayerGuy : ITickable, IInitializable
 
     public void Tick()
     {
-        MovePlayer();
-        CheckForClimbableSurfaces();
+        if (_climbingRoutine == null)
+        {
+            MovePlayer();
+
+            Vector3? climbTarget = CheckForClimbableSurfaces();
+            if (climbTarget != null)
+            {
+                _climbingRoutine = ClimbSurface(climbTarget.Value);
+                _asyncTaskProcessor.Process(_climbingRoutine, () => { _climbingRoutine = null; });
+            }
+        }
     }
 
     public void RotateTo(Vector3 rotation)
     {
         Transform.rotation = Quaternion.Euler(Transform.eulerAngles.SetY(rotation.y));
     }
+
     public void LookAt(Vector3 vector3)
     {
         Transform.LookAt(vector3.SetY(Transform.position.y));
     }
+
     public Vector3 Forward
     {
         get { return Transform.forward; }
@@ -113,20 +128,27 @@ public class PlayerGuy : ITickable, IInitializable
             });
         }
 
-        if (movementDirection == Vector3.zero)
+        if (movementDirection == Vector3.zero && _walkingTimeout == null)
         {
-            _speedLevel = 1;
-
-            if (_timerRoutine != null)
+            _walkingTimeout = _timerFactory.CreateTimer(.25f);
+            _asyncTaskProcessor.Process(_walkingTimeout, () =>
             {
-                _asyncTaskProcessor.Cancel(_timerRoutine);
-                _timerRoutine = null;
+                _speedLevel = 1;
+                if (_timerRoutine != null)
+                {
+                    _asyncTaskProcessor.Cancel(_timerRoutine);
+                    _timerRoutine = null;
+                }
+            });
+        }
+        else
+        {
+            if (_walkingTimeout != null)
+            {
+                _asyncTaskProcessor.Cancel(_walkingTimeout);
+                _walkingTimeout = null;
             }
         }
-
-        //If the user is inputting a direction increment our accelerate timer
-        //If they aren't for a second, stop
-        //When our accelerate timer hits 0 increment our speed level.
 
         //Also if we have a nonzero velocity lets have the mesh kinda rotated forward
         //and bobbing as a little placeholder, more rotated per speed level
@@ -139,9 +161,24 @@ public class PlayerGuy : ITickable, IInitializable
                                     .SetZ(velocity.z);
     }
 
-    private const float playerHeight = 1f;
-    private Vector3 _climbTarget;
-    private void CheckForClimbableSurfaces()
+    private IEnumerator ClimbSurface(Vector3 target)
+    {
+        if (_speedLevel > 1) _speedLevel--;
+        iTween.MoveTo(
+            _playerGuyHooks.gameObject, 
+            iTween.Hash(
+                "y", 
+                target.y + PlayerHeight / 2f, 
+                "time", .25f, 
+                "easetype", 
+                iTween.EaseType.easeInBack));
+
+        yield return _timerFactory.CreateTimer(.25f);
+
+        Debug.DrawLine(target, target.SetY(target.y + 2), Color.red);
+    }
+
+    private Vector3? CheckForClimbableSurfaces()
     {
         RaycastHit hit;
         var distanceTraveledLastFrame = (Rigidbody.velocity * Time.fixedDeltaTime).magnitude * 2.5;
@@ -150,7 +187,7 @@ public class PlayerGuy : ITickable, IInitializable
             //TODO: Figure out when we should ledge-climb, probably based on speed/direction/distance
             if (hit.distance < distanceTraveledLastFrame)
             {
-                var playerTop = Transform.position.y + playerHeight / 2f;
+                var playerTop = Transform.position.y + PlayerHeight / 2f;
                 
                 Debug.DrawLine(Transform.position, hit.point, Color.cyan);
                 Debug.DrawLine(hit.point, hit.point.SetY(hit.point.y + 2), Color.grey);
@@ -162,22 +199,11 @@ public class PlayerGuy : ITickable, IInitializable
                     var distance = Mathf.Abs(raycastHit.point.y - playerTop);
                     if (!(distance < .5f)) continue;
 
-                    Debug.DrawLine(_climbTarget, _climbTarget.SetY(_climbTarget.y + 2), Color.red);
-
-                    _climbTarget = raycastHit.point;
-                    Rigidbody.position = _climbTarget.SetY(_climbTarget.y + playerHeight/2f);
-
-                    if (_speedLevel > 1) _speedLevel--;
-                    return;
+                    return raycastHit.point;
                 }
-
-                _speedLevel = 1;
-                Rigidbody.velocity = Rigidbody
-                    .velocity
-                    .SetX(0f)
-                    .SetZ(0f);
             }
         }
-        _climbTarget = Vector3.zero;
+
+        return null;
     }
 }

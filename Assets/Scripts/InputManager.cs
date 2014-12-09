@@ -24,11 +24,21 @@ namespace Assets.Scripts.Managers
         private bool _cameraInputEnabled = true;
         private bool _playerMovementEnabled = true;
 
+        public bool DebugWalkRight = false;
 
         public float HoritzontalAxis
         {
-            get { return _playerMovementEnabled && PlayerInputEnabled ? _horitzontalAxis : 0; }
-           private set { _horitzontalAxis = value; }
+            get
+            {
+                if (DebugWalkRight) return 1;
+
+                return _playerMovementEnabled && PlayerInputEnabled ? _horitzontalAxis : 0;
+            }
+            private set
+            {
+                _horitzontalAxis = value; 
+                
+            }
         }
 
         public float VerticalAxis
@@ -42,7 +52,12 @@ namespace Assets.Scripts.Managers
 
         public float RawHoritzontalAxis
         {
-            get { return _playerMovementEnabled && PlayerInputEnabled ? _rawHoritzontalAxis : 0; }
+            get
+            {
+                if (DebugWalkRight) return 1;
+                
+                return _playerMovementEnabled && PlayerInputEnabled ? _rawHoritzontalAxis : 0;
+            }
             private set { _rawHoritzontalAxis = value; }
         }
 

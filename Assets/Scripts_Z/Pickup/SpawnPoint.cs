@@ -6,7 +6,8 @@ public class SpawnPoint : MonoBehaviour
     public enum SpawnType
     {
         Undefined,
-        ZenPowerup
+        ZenPowerup,
+        Player
     }
 
     public SpawnType Type;

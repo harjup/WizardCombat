@@ -83,7 +83,11 @@ public class MyGameRunner : ITickable, IInitializable
             ZenPickup zenPickup = _zenPickupFactory.Create();
             zenPickup.Position = powerUpSpawnPoint.transform.position;
         }
-        
+
+        foreach (var playerSpawnPoint in spawnPointLocator.Find(SpawnPoint.SpawnType.Player))
+        {
+            _playerGuy.Transform.position = playerSpawnPoint.transform.position;
+        }
     }
 
     public void Initialize()
