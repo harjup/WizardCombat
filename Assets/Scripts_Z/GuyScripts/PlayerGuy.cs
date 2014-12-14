@@ -7,6 +7,15 @@ using System.Collections;
 
 public class PlayerGuy : ITickable, IInitializable
 {
+    enum PlayerState
+    {
+        Ground,
+        Climbing,
+        Jumping,
+        Airborne
+    }
+
+
     private readonly PlayerGuyHooks _playerGuyHooks;
     private readonly ParallelAsyncTaskProcessor _asyncTaskProcessor;
     private readonly TimerFactory _timerFactory;
@@ -14,10 +23,13 @@ public class PlayerGuy : ITickable, IInitializable
 
     private readonly DebugGuiHooks _debugGuiHooks;
 
-    private const float MaxSpeed = 10f;
+    private const float InitialSpeed = 5f;
+    private const float SpeedMultiplier = 5f;
+    
     private IEnumerator _timerRoutine;
     private IEnumerator _walkingTimeout = null;
     private IEnumerator _climbingRoutine = null;
+    private IEnumerator _applyGravityRoutine;
     private int _speedLevel = 1;
     private const int MaxSpeedLevel = 3;
 
@@ -55,7 +67,7 @@ public class PlayerGuy : ITickable, IInitializable
 
     public void Tick()
     {
-        if (_climbingRoutine == null)
+        if (!_asyncTaskProcessor.IsProcessing(_climbingRoutine))
         {
             MovePlayer();
 
@@ -64,6 +76,15 @@ public class PlayerGuy : ITickable, IInitializable
             {
                 _climbingRoutine = ClimbSurface(climbTarget.Value);
                 _asyncTaskProcessor.Process(_climbingRoutine, () => { _climbingRoutine = null; });
+            }
+
+            if (!_asyncTaskProcessor.IsProcessing(_applyGravityRoutine))
+            {
+                _applyGravityRoutine = ApplyGravity();
+                _asyncTaskProcessor.Process(_applyGravityRoutine, () =>
+                {
+                    _applyGravityRoutine = null;
+                });
             }
         }
     }
@@ -128,22 +149,27 @@ public class PlayerGuy : ITickable, IInitializable
             });
         }
 
-        if (movementDirection == Vector3.zero && _walkingTimeout == null)
+        if (movementDirection == Vector3.zero)
         {
-            _walkingTimeout = _timerFactory.CreateTimer(.25f);
-            _asyncTaskProcessor.Process(_walkingTimeout, () =>
+            if (_walkingTimeout == null)
             {
-                _speedLevel = 1;
-                if (_timerRoutine != null)
+                _walkingTimeout = _timerFactory.CreateTimer(.25f);
+                _asyncTaskProcessor.Process(_walkingTimeout, () =>
                 {
-                    _asyncTaskProcessor.Cancel(_timerRoutine);
-                    _timerRoutine = null;
-                }
-            });
+                    _speedLevel = 1;
+
+                    if (_asyncTaskProcessor.IsProcessing(_timerRoutine))
+                    {
+                        _asyncTaskProcessor.Cancel(_timerRoutine);
+                        _timerRoutine = null;
+                        _walkingTimeout = null;
+                    }
+                });
+            }
         }
         else
         {
-            if (_walkingTimeout != null)
+            if (_asyncTaskProcessor.IsProcessing(_walkingTimeout))
             {
                 _asyncTaskProcessor.Cancel(_walkingTimeout);
                 _walkingTimeout = null;
@@ -153,7 +179,7 @@ public class PlayerGuy : ITickable, IInitializable
         //Also if we have a nonzero velocity lets have the mesh kinda rotated forward
         //and bobbing as a little placeholder, more rotated per speed level
 
-        var velocity = movementDirection * (_speedLevel * MaxSpeed);
+        var velocity = movementDirection * (InitialSpeed + (_speedLevel * SpeedMultiplier));
 
         //Set direction and speed
         Rigidbody.velocity = Rigidbody.velocity
@@ -163,7 +189,7 @@ public class PlayerGuy : ITickable, IInitializable
 
     private IEnumerator ClimbSurface(Vector3 target)
     {
-        if (_speedLevel > 1) _speedLevel--;
+        //if (_speedLevel > 1) _speedLevel--;
         iTween.MoveTo(
             _playerGuyHooks.gameObject, 
             iTween.Hash(
@@ -173,7 +199,7 @@ public class PlayerGuy : ITickable, IInitializable
                 "easetype", 
                 iTween.EaseType.easeInBack));
 
-        yield return _timerFactory.CreateTimer(.25f);
+        yield return _timerFactory.CreateTimer(.25f / _speedLevel);
 
         Debug.DrawLine(target, target.SetY(target.y + 2), Color.red);
     }
@@ -206,4 +232,76 @@ public class PlayerGuy : ITickable, IInitializable
 
         return null;
     }
+
+    //TODO: Determine in what context this should be called, have some basic falling logic in here too
+    public void JumpCheck()
+    {
+        if (_playerGuyHooks.gameObject.GetComponent<iTween>() != null) return;
+
+        Rigidbody.velocity = Rigidbody.velocity.SetY(0f);
+
+        var predictedDistanceForward = (Rigidbody.velocity * Time.fixedDeltaTime * 2.5f).SetY(0);
+
+        var distanceToFloorForward = GetDistanceToFloor(predictedDistanceForward);
+        if (distanceToFloorForward > .5f)
+        {
+            Rigidbody.velocity = Rigidbody.velocity.SetY(5f);
+        }
+    }
+
+    public IEnumerator ApplyGravity()
+    {
+        if (_playerGuyHooks.gameObject.GetComponent<iTween>() != null) yield break;
+
+        var forwardEdge = Transform.forward * PlayerHeight / 2f;
+        var backwardEdge = -1 * forwardEdge;
+
+        var distanceToFloorForward = GetDistanceToFloor(forwardEdge);
+        var distanceToFloorBehind = GetDistanceToFloor(backwardEdge);
+
+        if (distanceToFloorForward > .01f && distanceToFloorBehind > .01f)
+        {
+            if (distanceToFloorForward < PlayerHeight / 2f
+                && distanceToFloorBehind < PlayerHeight / 2f)
+            {
+                Transform.position = Transform.position.SetY(Transform.position.y - distanceToFloorForward);
+            }
+            else if (distanceToFloorForward < 90 &&
+                      distanceToFloorBehind < 90)
+            {
+                iTween.MoveTo(_playerGuyHooks.gameObject, iTween.Hash(
+                    "y", (Transform.position.y - distanceToFloorForward),
+                    "time", .5f,
+                    "easetype", iTween.EaseType.easeInBack));
+
+                yield return _timerFactory.CreateTimer(0.5f);
+            }
+        }
+    }
+
+    float GetDistanceToFloor(Vector3 directionToLook)
+    {
+        RaycastHit[] hits;
+        hits = Physics.RaycastAll(
+            Transform.position + directionToLook + new Vector3(0f, 10f, 0f),
+            Vector3.down,
+            100);
+
+
+        float leastDistance = 100;
+        foreach (var raycastHit in hits)
+        {
+            Debug.DrawLine(Transform.position + directionToLook, raycastHit.point, Color.cyan);
+
+            var edgePosition = (Transform.position.y - ((Transform.localScale.y / 2f)));
+            var pointDifference = edgePosition - (raycastHit.point.y);
+            if (pointDifference < leastDistance)
+            {
+                leastDistance = pointDifference;
+            }
+        }
+
+        return leastDistance;
+    }
+
 }

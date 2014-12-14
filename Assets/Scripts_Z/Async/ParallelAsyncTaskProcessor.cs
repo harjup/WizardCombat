@@ -179,4 +179,9 @@ public class ParallelAsyncTaskProcessor : ITickable
         CullWorkerStacks();
     }
 
+    public bool IsProcessing(IEnumerator coroutine)
+    {
+        return coroutine != null 
+           && _workerStacks.Any(workerStack => workerStack.Any(w => w.Process == coroutine));
+    }
 }
