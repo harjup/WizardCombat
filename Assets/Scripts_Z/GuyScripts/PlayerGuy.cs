@@ -9,11 +9,14 @@ public class PlayerGuy : ITickable, IInitializable
 {
     enum PlayerState
     {
+        Undefined,
         Ground,
         Climbing,
         Jumping,
         Airborne
     }
+
+    private PlayerState _playerState = PlayerState.Ground;
 
 
     private readonly PlayerGuyHooks _playerGuyHooks;
@@ -70,7 +73,16 @@ public class PlayerGuy : ITickable, IInitializable
         if (!_asyncTaskProcessor.IsProcessing(_climbingRoutine))
         {
             MovePlayer();
-
+            
+            if (_playerState != PlayerState.Jumping)
+            {
+                CheckForFloor();
+            }
+            if (_playerState == PlayerState.Ground)
+            {
+                JumpCheck();
+            }
+            
             Vector3? climbTarget = CheckForClimbableSurfaces();
             if (climbTarget != null)
             {
@@ -78,14 +90,16 @@ public class PlayerGuy : ITickable, IInitializable
                 _asyncTaskProcessor.Process(_climbingRoutine, () => { _climbingRoutine = null; });
             }
 
-            if (!_asyncTaskProcessor.IsProcessing(_applyGravityRoutine))
+
+            // TODO: Maybe let this go if our guy is too heavy
+            /*if (!_asyncTaskProcessor.IsProcessing(_applyGravityRoutine))
             {
                 _applyGravityRoutine = ApplyGravity();
                 _asyncTaskProcessor.Process(_applyGravityRoutine, () =>
                 {
                     _applyGravityRoutine = null;
                 });
-            }
+            }*/
         }
     }
 
@@ -233,6 +247,31 @@ public class PlayerGuy : ITickable, IInitializable
         return null;
     }
 
+    private void CheckForFloor()
+    {
+        bool hit = Physics.Raycast(
+            Transform.position,
+            Vector3.down,
+            PlayerHeight/2f);
+
+        Debug.DrawLine(Transform.position,
+            Transform.position + (Vector3.down * (PlayerHeight / 2f)), 
+            Color.red);
+
+        if (!hit)
+        {
+            Rigidbody.velocity = Rigidbody.velocity.SetY(-5);
+            _playerState = PlayerState.Airborne;
+            _debugGuiHooks.TextDebug = "In Air";
+        }
+        else
+        {
+            Rigidbody.velocity = Rigidbody.velocity.SetY(0);
+            _playerState = PlayerState.Ground;
+            _debugGuiHooks.TextDebug = "On Ground";
+        }
+    }
+
     //TODO: Determine in what context this should be called, have some basic falling logic in here too
     public void JumpCheck()
     {
@@ -245,7 +284,11 @@ public class PlayerGuy : ITickable, IInitializable
         var distanceToFloorForward = GetDistanceToFloor(predictedDistanceForward);
         if (distanceToFloorForward > .5f)
         {
+            _playerState = PlayerState.Jumping;
             Rigidbody.velocity = Rigidbody.velocity.SetY(5f);
+
+            IEnumerator timer = _timerFactory.CreateTimer(.5f);
+            _asyncTaskProcessor.Process(timer, () => {_playerState = PlayerState.Airborne;});
         }
     }
 
