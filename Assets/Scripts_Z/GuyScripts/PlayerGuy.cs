@@ -80,7 +80,7 @@ public class PlayerGuy : ITickable, IInitializable
             }
             if (_playerState == PlayerState.Ground)
             {
-                JumpCheck();
+                //JumpCheck();
             }
             
             Vector3? climbTarget = CheckForClimbableSurfaces();
@@ -203,17 +203,21 @@ public class PlayerGuy : ITickable, IInitializable
 
     private IEnumerator ClimbSurface(Vector3 target)
     {
-        //if (_speedLevel > 1) _speedLevel--;
-        iTween.MoveTo(
+        /*iTween.MoveTo(
             _playerGuyHooks.gameObject, 
             iTween.Hash(
                 "y", 
                 target.y + PlayerHeight / 2f, 
-                "time", .25f, 
+                "time", .2f, 
                 "easetype", 
-                iTween.EaseType.easeInBack));
+                iTween.EaseType.easeInBack));*/
 
-        yield return _timerFactory.CreateTimer(.25f / _speedLevel);
+        _playerGuyHooks.gameObject.transform.position =
+            _playerGuyHooks.gameObject.transform.position.SetY(target.y + PlayerHeight/2f);
+
+        yield return null;
+
+        //yield return _timerFactory.CreateTimer(.25f / _speedLevel);
 
         Debug.DrawLine(target, target.SetY(target.y + 2), Color.red);
     }
