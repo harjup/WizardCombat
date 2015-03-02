@@ -1,6 +1,7 @@
 ﻿using System;
 using UnityEngine;
 using System.Collections;
+using System.Runtime.Remoting.Messaging;
 using Assets.Scripts.Managers;
 using DG.Tweening;
 using ModestTree.Zenject;
@@ -40,7 +41,6 @@ public class SimplePlayer : ITickable, IInitializable, IPlayerGuy
         _inputHelper = new InputHelper(InputManager.Instance, _camera);
     }
 
-    // Use this for initialization
     public Transform Transform
     {
         get { return _playerGuyHooks.transform; }
@@ -53,10 +53,22 @@ public class SimplePlayer : ITickable, IInitializable, IPlayerGuy
 
     public void Initialize()
     {
-
+        _playerGuyHooks.PlayerHandsCollider.TriggerEnter += EvaluateTriggerCollision;
     }
 
     public void Tick()
+    {
+        if (_dashRoutine == null)
+        {
+            Walk();
+        }
+        else
+        {
+            DashTick();
+        }
+    }
+
+    public void Walk()
     {
         var movementDirection = _inputHelper.GetInputDirection();
         LookTowardsDirection(movementDirection);
@@ -65,12 +77,97 @@ public class SimplePlayer : ITickable, IInitializable, IPlayerGuy
         SetRigidbodyVelocity(velocity);
 
         SetSimpleAnimation(velocity);
+
+        //TODO: Use events for inputs
+        ReadInput(velocity);
+    }
+
+    private IEnumerator _dashRoutine;
+    public void StartDash()
+    {
+        _dashRoutine = _timerFactory.CreateTimer(.5f);
+        _asyncTaskProcessor.Process(_dashRoutine, () =>
+        {
+            _dashRoutine = null;
+        });
+    }
+
+    public void DashTick()
+    {
+        var movementDirection = Transform.forward;
+        LookTowardsDirection(movementDirection);
+
+        var velocity = movementDirection * 20f;
+        SetRigidbodyVelocity(velocity);
+
+        SetSimpleAnimation(velocity);
+    }
+
+    private void EvaluateTriggerCollision(Collider collider)
+    {
+        var boxTransform = collider.transform;
+        var movableBox = collider.GetComponent<MovableBox>();
+
+        if (movableBox != null && boxTransform.parent != Transform)
+        {
+            movableBox.DisablePhysics();
+            boxTransform.SetParent(Transform);
+
+            boxTransform
+                .DOLocalMove(Vector3.zero.SetY(1f), .5f)
+                .SetEase(Ease.OutCirc);
+        }
+    }
+
+    public void ReadInput(Vector3 velocity)
+    {
+        if (InputManager.Instance.InteractAction)
+        {
+            var box = Transform.GetComponentInChildren<MovableBox>();
+            if (box != null)
+            {
+                DisablePickUpColliderForHalfSecond();
+                ThrowBox(box, velocity);
+            }
+        }
+        if (InputManager.Instance.CameraAction)
+        {
+            StartDash();
+        }
+    }
+
+    public void ThrowBox(MovableBox box, Vector3 velocity)
+    {
+        var throwPower = 2f;
+        var throwVector = Transform.forward * throwPower;
+        var boxVelocity = throwVector + velocity;
+
+        box.ResetParent();
+        box.EnablePhysics(boxVelocity);
+    }
+
+    //TODO: Persist better
+    private IEnumerator _timer;
+    public void DisablePickUpColliderForHalfSecond()
+    {
+        if (_timer != null)
+        {
+            _asyncTaskProcessor.Cancel(_timer);
+        }
+
+        _playerGuyHooks.PlayerHandsCollider.collider.enabled = false;
+        _timer = _timerFactory.CreateTimer(.5f);
+        _asyncTaskProcessor.Process(_timer, () =>
+        {
+            _playerGuyHooks.PlayerHandsCollider.collider.enabled = true;
+            _timer = null;
+        });
     }
 
     //TODO: Store state elsewhere
     private bool direction;
     public void SetSimpleAnimation(Vector3 velocity)
-    {
+    {        
         var meshEulerAngles = _playerGuyHooks.CubeMesh.transform.localEulerAngles;
         
         if (velocity.magnitude > .1f)
