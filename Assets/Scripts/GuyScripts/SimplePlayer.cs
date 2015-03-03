@@ -105,6 +105,12 @@ public class SimplePlayer : ITickable, IInitializable, IPlayerGuy
 
     private void EvaluateTriggerCollision(Collider collider)
     {
+        // We only care about this when dashing
+        if (_dashRoutine == null)
+        {
+            return;
+        }
+
         var boxTransform = collider.transform;
         var movableBox = collider.GetComponent<MovableBox>();
 
@@ -129,17 +135,17 @@ public class SimplePlayer : ITickable, IInitializable, IPlayerGuy
                 DisablePickUpColliderForHalfSecond();
                 ThrowBox(box, velocity);
             }
-        }
-        if (InputManager.Instance.CameraAction)
-        {
-            StartDash();
+            else
+            {
+                StartDash();
+            }
         }
     }
 
     public void ThrowBox(MovableBox box, Vector3 velocity)
     {
-        var throwPower = 2f;
-        var throwVector = Transform.forward * throwPower;
+        var throwPower = 5f;
+        var throwVector = (Transform.forward + Transform.up) * throwPower;
         var boxVelocity = throwVector + velocity;
 
         box.ResetParent();
