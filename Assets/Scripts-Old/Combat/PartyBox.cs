@@ -19,7 +19,7 @@ public class PartyBox : MonoBehaviour
         if (hitzone != null && GetComponent(typeof(iTween)) == null)
         {
             _healthPoints -= hitzone.Power;
-            rigidbody.velocity = hitzone.Direction * hitzone.Power;
+            GetComponent<Rigidbody>().velocity = hitzone.Direction * hitzone.Power;
             if (_healthPoints <= 0)
             {
                 //spawn explosion effect
@@ -39,9 +39,9 @@ public class PartyBox : MonoBehaviour
                     "time",
                     .3f));
 
-                rigidbody.angularVelocity = Vector3.left;
+                GetComponent<Rigidbody>().angularVelocity = Vector3.left;
 
-                rigidbody.isKinematic = true;
+                GetComponent<Rigidbody>().isKinematic = true;
                 GetComponent<Collider>().enabled = false;
                 Destroy(gameObject, 1f);
             }

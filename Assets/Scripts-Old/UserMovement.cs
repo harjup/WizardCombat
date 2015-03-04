@@ -104,7 +104,7 @@ namespace Assets.Scripts
         private IEnumerator _timerRoutine = null;
         void MovePlayer()
         {
-            FindObjectOfType<Text>().text = "Speed: " + (rigidbody.velocity.sqrMagnitude);
+            FindObjectOfType<Text>().text = "Speed: " + (GetComponent<Rigidbody>().velocity.sqrMagnitude);
 
             if (_timerRoutine == null && _speedLevel < MaxSpeedLevel)
             {
@@ -163,9 +163,9 @@ namespace Assets.Scripts
             //add a trail effect
             //add some kinda "shockwave" that's bigger than the player as a hitbox/visual bit
             dashGuyThing.SetDashAttack(true);
-            rigidbody.velocity = direction.normalized * (level * MaxSpeed * 2);
+            GetComponent<Rigidbody>().velocity = direction.normalized * (level * MaxSpeed * 2);
             yield return new WaitForSeconds(.25f);
-            rigidbody.velocity = Vector3.zero;
+            GetComponent<Rigidbody>().velocity = Vector3.zero;
             dashGuyThing.SetDashAttack(false);
             yield return new WaitForSeconds(.25f);
             InputManager.Instance.PlayerMovementEnabled = true;
@@ -173,7 +173,7 @@ namespace Assets.Scripts
 
         public IEnumerator ClimbGeometry(Vector3 target, Action action)
         {
-            collider.enabled = false;
+            GetComponent<Collider>().enabled = false;
             
             //SoundManager.Instance.Play(SoundManager.SoundEffect.EffortNoise);
             iTween.MoveTo(gameObject,
@@ -181,7 +181,7 @@ namespace Assets.Scripts
                 .4f);
             action();
             yield return new WaitForSeconds(.4f);
-            collider.enabled = true;
+            GetComponent<Collider>().enabled = true;
             yield break;
         }
 

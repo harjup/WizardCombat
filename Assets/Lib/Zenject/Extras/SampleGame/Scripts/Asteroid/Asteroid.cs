@@ -32,11 +32,11 @@ namespace ModestTree.Asteroids
         {
             get
             {
-                return rigidbody.mass;
+                return GetComponent<Rigidbody>().mass;
             }
             set
             {
-                rigidbody.mass = value;
+                GetComponent<Rigidbody>().mass = value;
             }
         }
 
@@ -53,7 +53,7 @@ namespace ModestTree.Asteroids
             set
             {
                 transform.localScale = new Vector3(value, value, value);
-                rigidbody.mass = value;
+                GetComponent<Rigidbody>().mass = value;
             }
         }
 
@@ -61,23 +61,23 @@ namespace ModestTree.Asteroids
         {
             get
             {
-                return rigidbody.velocity;
+                return GetComponent<Rigidbody>().velocity;
             }
             set
             {
-                rigidbody.velocity = value;
+                GetComponent<Rigidbody>().velocity = value;
             }
         }
 
         public void FixedTick()
         {
             // Limit speed to a maximum
-            var speed = rigidbody.velocity.magnitude;
+            var speed = GetComponent<Rigidbody>().velocity.magnitude;
 
             if (speed > _settings.maxSpeed)
             {
-                var dir = rigidbody.velocity / speed;
-                rigidbody.velocity = dir * _settings.maxSpeed;
+                var dir = GetComponent<Rigidbody>().velocity / speed;
+                GetComponent<Rigidbody>().velocity = dir * _settings.maxSpeed;
             }
         }
 
@@ -116,7 +116,7 @@ namespace ModestTree.Asteroids
 
         bool IsMovingInDirection(Vector3 dir)
         {
-            return Vector3.Dot(dir, rigidbody.velocity) > 0;
+            return Vector3.Dot(dir, GetComponent<Rigidbody>().velocity) > 0;
         }
 
         [Serializable]

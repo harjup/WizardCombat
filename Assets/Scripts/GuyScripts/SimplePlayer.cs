@@ -161,11 +161,11 @@ public class SimplePlayer : ITickable, IInitializable, IPlayerGuy
             _asyncTaskProcessor.Cancel(_timer);
         }
 
-        _playerGuyHooks.PlayerHandsCollider.collider.enabled = false;
+        _playerGuyHooks.PlayerHandsCollider.GetComponent<Collider>().enabled = false;
         _timer = _timerFactory.CreateTimer(.5f);
         _asyncTaskProcessor.Process(_timer, () =>
         {
-            _playerGuyHooks.PlayerHandsCollider.collider.enabled = true;
+            _playerGuyHooks.PlayerHandsCollider.GetComponent<Collider>().enabled = true;
             _timer = null;
         });
     }

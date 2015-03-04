@@ -12,7 +12,7 @@ namespace ModestTree.Asteroids
         void Update()
         {
             offset.y += Speed * Time.deltaTime;
-            renderer.material.mainTextureOffset = offset;
+            GetComponent<Renderer>().material.mainTextureOffset = offset;
         }
     }
 }

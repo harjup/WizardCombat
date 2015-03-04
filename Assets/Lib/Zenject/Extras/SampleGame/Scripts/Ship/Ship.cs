@@ -30,7 +30,7 @@ namespace ModestTree.Asteroids
         {
             get
             {
-                return _hooks.audio;
+                return _hooks.GetComponent<AudioSource>();
             }
         }
 
