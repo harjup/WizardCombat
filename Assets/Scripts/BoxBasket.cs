@@ -11,6 +11,4 @@ public class BoxBasket : MonoBehaviour
             movableBox.PoofAway();
         }
     }
-
-
 }
