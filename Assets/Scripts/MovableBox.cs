@@ -2,6 +2,7 @@
 using System.Collections;
 using DG.Tweening;
 using ModestTree;
+using ModestTree.Zenject;
 
 public class MovableBox : MonoBehaviourBase
 {
@@ -46,4 +47,6 @@ public class MovableBox : MonoBehaviourBase
         Instantiate(_boxConfetti, transform.position, Quaternion.identity);
         Destroy(gameObject, 1.5f);
     }
+
+    public class Factory : GameObjectFactory<MovableBox>{}
 }

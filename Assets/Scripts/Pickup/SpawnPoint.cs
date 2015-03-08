@@ -7,7 +7,8 @@ public class SpawnPoint : MonoBehaviour
     {
         Undefined,
         ZenPowerup,
-        Player
+        Player,
+        Box
     }
 
     public SpawnType Type;

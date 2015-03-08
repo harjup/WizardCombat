@@ -3,6 +3,7 @@ using ModestTree.Asteroids;
 using ModestTree.Zenject;
 using UnityEngine;
 using System.Collections;
+using UnityEngine.Serialization;
 
 public class MyGameInstaller : MonoInstaller
 {
@@ -43,6 +44,11 @@ public class MyGameInstaller : MonoInstaller
         Container.Bind<IInitializable>().ToSingle<SimplePlayer>();
 
         Container.Bind<DebugGuiHooks>().ToSingleFromPrefab<DebugGuiHooks>(MySettings.DebugGuiHooksPrefab);
+
+        Container.Bind<Stage>().ToSingle();
+        Container.Bind<StageHooks>().ToTransientFromPrefab<StageHooks>(MySettings.Stage.FirstLevelPrefab).WhenInjectedInto<Stage>();
+
+        Container.BindGameObjectFactory<MovableBox.Factory>(MySettings.Stage.MovableBoxPrefab);
     }
 }
 
@@ -52,6 +58,7 @@ public class MySettings
     public Camera MainCamera;
     public PlayerGuySettings PlayerGuy;
     public PickupSettings Pickup;
+    public StageSettings Stage;
 
     [Serializable]
     public class PickupSettings
@@ -65,17 +72,28 @@ public class MySettings
         public GameObject Prefab;
     }
 
+    [Serializable]
+    public class StageSettings
+    {
+        public GameObject FirstLevelPrefab;
+
+        public GameObject MovableBoxPrefab;
+
+    }
+
     public GameObject DebugGuiHooksPrefab;
 }
 
 public class MyGameRunner : ITickable, IInitializable
 {
     private SimplePlayer _playerGuy;
+    private Stage _stage;
     private ZenPickup.Factory _zenPickupFactory;
 
-    public MyGameRunner(SimplePlayer playerGuy, ZenPickup.Factory zenPickupFactory, SpawnPointLocator spawnPointLocator)
+    public MyGameRunner(SimplePlayer playerGuy, ZenPickup.Factory zenPickupFactory, Stage stage, SpawnPointLocator spawnPointLocator)
     {
         _playerGuy = playerGuy;
+        _stage = stage;
         _zenPickupFactory = zenPickupFactory;
 
         foreach (var powerUpSpawnPoint in spawnPointLocator.Find(SpawnPoint.SpawnType.ZenPowerup))
@@ -84,10 +102,7 @@ public class MyGameRunner : ITickable, IInitializable
             zenPickup.Position = powerUpSpawnPoint.transform.position;
         }
 
-        foreach (var playerSpawnPoint in spawnPointLocator.Find(SpawnPoint.SpawnType.Player))
-        {
-            _playerGuy.Transform.position = playerSpawnPoint.transform.position;
-        }
+        _stage.StartLevel(_playerGuy);
     }
 
     public void Initialize()
