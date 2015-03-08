@@ -7,7 +7,7 @@ public class ZenPickup : IInitializable
     private PickupHooks _pickupHooks;
     private ParallelAsyncTaskProcessor _parallelAsyncTaskProcessor;
     private bool _pickupAllowed = true;
-    private TimerFactory _timerFactory = new TimerFactory();
+    private TimerCoroutineFactory _timerCoroutineFactory = new TimerCoroutineFactory();
 
     public ZenPickup(PickupHooks pickupHooks, ParallelAsyncTaskProcessor parallelAsyncTaskProcessor)
     {
@@ -52,7 +52,7 @@ public class ZenPickup : IInitializable
     {
         _pickupHooks.SpriteRenderer.enabled = false;
         _pickupAllowed = false;
-        yield return _timerFactory.CreateTimer(1f);
+        yield return _timerCoroutineFactory.CreateTimer(1f);
         _pickupHooks.KillUrSelf();
     }
 

@@ -46,9 +46,13 @@ public class MyGameInstaller : MonoInstaller
         Container.Bind<DebugGuiHooks>().ToSingleFromPrefab<DebugGuiHooks>(MySettings.DebugGuiHooksPrefab);
 
         Container.Bind<Stage>().ToSingle();
+        Container.Bind<ITickable>().ToSingle<Stage>();
         Container.Bind<StageHooks>().ToTransientFromPrefab<StageHooks>(MySettings.Stage.FirstLevelPrefab).WhenInjectedInto<Stage>();
 
         Container.BindGameObjectFactory<MovableBox.Factory>(MySettings.Stage.MovableBoxPrefab);
+
+        Container.Bind<Timer>().ToTransient();
+        Container.Bind<IInitializable>().ToTransient<Timer>();
     }
 }
 

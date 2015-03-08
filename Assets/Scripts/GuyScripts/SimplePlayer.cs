@@ -16,7 +16,7 @@ public class SimplePlayer : ITickable, IInitializable, IPlayerGuy
 
     private readonly PlayerGuyHooks _playerGuyHooks;
     private readonly ParallelAsyncTaskProcessor _asyncTaskProcessor;
-    private readonly TimerFactory _timerFactory;
+    private readonly TimerCoroutineFactory _timerCoroutineFactory;
     private readonly Camera _camera;
     private readonly DebugGuiHooks _debugGuiHooks;
 
@@ -36,7 +36,7 @@ public class SimplePlayer : ITickable, IInitializable, IPlayerGuy
 
         _debugGuiHooks = debugGuiHooks;
 
-        _timerFactory = new TimerFactory();
+        _timerCoroutineFactory = new TimerCoroutineFactory();
 
         _inputHelper = new InputHelper(InputManager.Instance, _camera);
     }
@@ -85,7 +85,7 @@ public class SimplePlayer : ITickable, IInitializable, IPlayerGuy
     private IEnumerator _dashRoutine;
     public void StartDash()
     {
-        _dashRoutine = _timerFactory.CreateTimer(.5f);
+        _dashRoutine = _timerCoroutineFactory.CreateTimer(.5f);
         _asyncTaskProcessor.Process(_dashRoutine, () =>
         {
             _dashRoutine = null;
@@ -162,7 +162,7 @@ public class SimplePlayer : ITickable, IInitializable, IPlayerGuy
         }
 
         _playerGuyHooks.PlayerHandsCollider.GetComponent<Collider>().enabled = false;
-        _timer = _timerFactory.CreateTimer(.5f);
+        _timer = _timerCoroutineFactory.CreateTimer(.5f);
         _asyncTaskProcessor.Process(_timer, () =>
         {
             _playerGuyHooks.PlayerHandsCollider.GetComponent<Collider>().enabled = true;

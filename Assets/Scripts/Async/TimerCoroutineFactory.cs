@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-public class TimerFactory
+public class TimerCoroutineFactory
 {
     public IEnumerator CreateTimer(float seconds)
     {

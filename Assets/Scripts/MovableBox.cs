@@ -6,10 +6,14 @@ using ModestTree.Zenject;
 
 public class MovableBox : MonoBehaviourBase
 {
+    public delegate void Destroyed(MovableBox box);
+
     private Rigidbody _rigidbody;
     private Collider _collider;
     private Transform _initialParent;
     private GameObject _boxConfetti;
+
+    public event Destroyed OnDestroyed;
 
     public void Start()
     {
@@ -43,6 +47,11 @@ public class MovableBox : MonoBehaviourBase
 
     public void PoofAway()
     {
+        if (OnDestroyed != null)
+        {
+            OnDestroyed(this);
+        }
+
         transform.DOScale(Vector3.one * .1f, 1f).SetEase(Ease.OutExpo);
         Instantiate(_boxConfetti, transform.position, Quaternion.identity);
         Destroy(gameObject, 1.5f);

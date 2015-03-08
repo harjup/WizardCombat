@@ -21,7 +21,7 @@ public class PlayerGuy : ITickable, IInitializable
 
     private readonly PlayerGuyHooks _playerGuyHooks;
     private readonly ParallelAsyncTaskProcessor _asyncTaskProcessor;
-    private readonly TimerFactory _timerFactory;
+    private readonly TimerCoroutineFactory _timerCoroutineFactory;
     private readonly Camera _camera;
 
     private readonly DebugGuiHooks _debugGuiHooks;
@@ -39,8 +39,10 @@ public class PlayerGuy : ITickable, IInitializable
     private const float PlayerHeight = 1f;
     private Vector3? _climbTarget;
 
+    private Timer _timer;
+
     public PlayerGuy(PlayerGuyHooks playerGuyHooks, ParallelAsyncTaskProcessor asyncTaskProcessor,
-        CameraManager cameraManager, DebugGuiHooks debugGuiHooks)
+        CameraManager cameraManager, Timer timer, DebugGuiHooks debugGuiHooks)
     {
         _playerGuyHooks = playerGuyHooks;
         _asyncTaskProcessor = asyncTaskProcessor;
@@ -50,7 +52,7 @@ public class PlayerGuy : ITickable, IInitializable
 
         _debugGuiHooks = debugGuiHooks;
 
-        _timerFactory = new TimerFactory();
+        _timerCoroutineFactory = new TimerCoroutineFactory();
     }
 
     public Transform Transform
@@ -154,7 +156,7 @@ public class PlayerGuy : ITickable, IInitializable
 
         if (_timerRoutine == null && _speedLevel < MaxSpeedLevel && movementDirection != Vector3.zero)
         {
-            _timerRoutine = _timerFactory.CreateTimer(_speedLevel + 1);
+            _timerRoutine = _timerCoroutineFactory.CreateTimer(_speedLevel + 1);
             _asyncTaskProcessor.Process(_timerRoutine, () =>
             {
                 _speedLevel++;
@@ -167,7 +169,7 @@ public class PlayerGuy : ITickable, IInitializable
         {
             if (_walkingTimeout == null)
             {
-                _walkingTimeout = _timerFactory.CreateTimer(.25f);
+                _walkingTimeout = _timerCoroutineFactory.CreateTimer(.25f);
                 _asyncTaskProcessor.Process(_walkingTimeout, () =>
                 {
                     _speedLevel = 1;
@@ -217,7 +219,7 @@ public class PlayerGuy : ITickable, IInitializable
 
         yield return null;
 
-        //yield return _timerFactory.CreateTimer(.25f / _speedLevel);
+        //yield return _timerCoroutineFactory.CreateTimer(.25f / _speedLevel);
 
         Debug.DrawLine(target, target.SetY(target.y + 2), Color.red);
     }
@@ -291,7 +293,7 @@ public class PlayerGuy : ITickable, IInitializable
             _playerState = PlayerState.Jumping;
             Rigidbody.velocity = Rigidbody.velocity.SetY(5f);
 
-            IEnumerator timer = _timerFactory.CreateTimer(.5f);
+            IEnumerator timer = _timerCoroutineFactory.CreateTimer(.5f);
             _asyncTaskProcessor.Process(timer, () => {_playerState = PlayerState.Airborne;});
         }
     }
@@ -321,7 +323,7 @@ public class PlayerGuy : ITickable, IInitializable
                     "time", .5f,
                     "easetype", iTween.EaseType.easeInBack));
 
-                yield return _timerFactory.CreateTimer(0.5f);
+                yield return _timerCoroutineFactory.CreateTimer(0.5f);
             }
         }
     }
