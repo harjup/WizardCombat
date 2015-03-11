@@ -43,6 +43,7 @@ public class MyGameInstaller : MonoInstaller
         Container.Bind<ITickable>().ToSingle<SimplePlayer>();
         Container.Bind<IInitializable>().ToSingle<SimplePlayer>();
 
+        Container.Bind<GuiManager>().ToSingle();
         Container.Bind<DebugGuiHooks>().ToSingleFromPrefab<DebugGuiHooks>(MySettings.DebugGuiHooksPrefab);
 
         Container.Bind<Stage>().ToSingle();
@@ -100,11 +101,11 @@ public class MyGameRunner : ITickable, IInitializable
         _stage = stage;
         _zenPickupFactory = zenPickupFactory;
 
-        foreach (var powerUpSpawnPoint in spawnPointLocator.Find(SpawnPoint.SpawnType.ZenPowerup))
+        /*foreach (var powerUpSpawnPoint in spawnPointLocator.Find(SpawnPoint.SpawnType.ZenPowerup))
         {
             ZenPickup zenPickup = _zenPickupFactory.Create();
             zenPickup.Position = powerUpSpawnPoint.transform.position;
-        }
+        }*/
 
         _stage.StartLevel(_playerGuy);
     }

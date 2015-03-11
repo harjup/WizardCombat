@@ -21,6 +21,11 @@ public class Timer : IInitializable
         _running = false;
     }
 
+    public void Reset()
+    {
+        _seconds = 0;
+    }
+
     public void Tick()
     {
         if (_running)

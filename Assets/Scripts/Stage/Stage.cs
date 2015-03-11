@@ -12,16 +12,18 @@ public class Stage : ITickable
     private MovableBox.Factory _boxFactory;
     private Timer _timer;
 
-    private DebugGuiHooks _debugGuiHooks;
+    private GuiManager _guiManager;
 
     private int _boxesRemaining;
 
     private int _seconds;
 
+    private IPlayerGuy _player;
+
     public Stage(StageHooks stageHooks, 
         MovableBox.Factory boxFactory, 
         Timer timer,
-        DebugGuiHooks debugGuiHooks)
+        GuiManager guiManager)
     {
         Assert.IsNotNull(stageHooks);
         stageHooks.ResolveDependencies();
@@ -33,16 +35,19 @@ public class Stage : ITickable
         _boxes = new List<MovableBox>();
         _timer = timer;
 
-        _debugGuiHooks = debugGuiHooks;   
+        _guiManager = guiManager;
+
+        _guiManager.GuiHooks.AgainButtonPressed += () => { StartLevel(_player); };
     }
 
     public void StartLevel(IPlayerGuy player)
     {
+        _player = player;
+
+        _guiManager.ShowMain();
+        
         player.Transform.position = _playerSpawn.transform.position;
 
-        //_stageRoot.AddStage(this);
-
-        // Spawn boxes at their spawn points
         foreach (var spawnPoint in _boxSpawns)
         {
             var box = _boxFactory.Create();
@@ -51,16 +56,24 @@ public class Stage : ITickable
             box.OnDestroyed += OnBoxDestroyed;
         }
 
-        _debugGuiHooks.BoxAmount = _boxes.Count.ToString();
+        _guiManager.GuiHooks.BoxAmount = _boxes.Count.ToString();
 
         // Start a timer
+        _timer.Reset();
         _timer.Start();
     }
 
     private void OnBoxDestroyed(MovableBox box)
     {
         _boxes.Remove(box);
-        _debugGuiHooks.BoxAmount = _boxes.Count.ToString();
+        var count = _boxes.Count;
+
+        _guiManager.GuiHooks.BoxAmount = count.ToString();
+
+        if (count <= 0)
+        {
+            Finish();
+        }
     }
 
     public void Finish()
@@ -69,6 +82,7 @@ public class Stage : ITickable
         _timer.Stop();
 
         // Display things to gui
+        _guiManager.ShowResults();
 
         // Do an effect
 
@@ -79,6 +93,6 @@ public class Stage : ITickable
     public void Tick()
     {
         _timer.Tick();
-        _debugGuiHooks.TimeElapsed = _timer.GetSeconds().ToString("F2");
+        _guiManager.GuiHooks.TimeElapsed = _timer.GetSeconds().ToString("F2");
     }
 }

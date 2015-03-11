@@ -24,7 +24,7 @@ public class PlayerGuy : ITickable, IInitializable
     private readonly TimerCoroutineFactory _timerCoroutineFactory;
     private readonly Camera _camera;
 
-    private readonly DebugGuiHooks _debugGuiHooks;
+    private readonly GuiManager _guiManager;
 
     private const float InitialSpeed = 5f;
     private const float SpeedMultiplier = 5f;
@@ -42,7 +42,7 @@ public class PlayerGuy : ITickable, IInitializable
     private Timer _timer;
 
     public PlayerGuy(PlayerGuyHooks playerGuyHooks, ParallelAsyncTaskProcessor asyncTaskProcessor,
-        CameraManager cameraManager, Timer timer, DebugGuiHooks debugGuiHooks)
+        CameraManager cameraManager, Timer timer, GuiManager guiManager)
     {
         _playerGuyHooks = playerGuyHooks;
         _asyncTaskProcessor = asyncTaskProcessor;
@@ -50,7 +50,7 @@ public class PlayerGuy : ITickable, IInitializable
 
         _playerGuyHooks.PlayerHandsCollider.PickupEvent += () => Log.Debug("Got a pickup");
 
-        _debugGuiHooks = debugGuiHooks;
+        _guiManager = guiManager;
 
         _timerCoroutineFactory = new TimerCoroutineFactory();
     }
@@ -268,13 +268,13 @@ public class PlayerGuy : ITickable, IInitializable
         {
             Rigidbody.velocity = Rigidbody.velocity.SetY(-5);
             _playerState = PlayerState.Airborne;
-            _debugGuiHooks.TextDebug = "In Air";
+            _guiManager.GuiHooks.TextDebug = "In Air";
         }
         else
         {
             Rigidbody.velocity = Rigidbody.velocity.SetY(0);
             _playerState = PlayerState.Ground;
-            _debugGuiHooks.TextDebug = "On Ground";
+            _guiManager.GuiHooks.TextDebug = "On Ground";
         }
     }
 
