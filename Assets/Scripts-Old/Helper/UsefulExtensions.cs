@@ -90,3 +90,15 @@ public static class GameObjectExtension
     }
 }
 
+public static class ColorExtension
+{
+    public static Color Invert(this Color c)
+    {
+        return new Color(255 - c.r, 255 - c.g, 255 - c.b, c.a);
+    }
+
+    public static Color SetAlpha(this Color c, float a)
+    {
+        return new Color(c.r, c.g, c.b, a);
+    }
+}
